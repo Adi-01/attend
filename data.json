@@ -1,0 +1,200 @@
+[
+  {
+    "name": "Arpit Jadav",
+    "phone": "9427916974",
+    "checkInAt": "2025-11-29T06:40:43.386+00:00",
+    "checkOutAt": null,
+    "longitudeIn": 70.467179,
+    "latitudeIn": 20.8478254,
+    "longitudeOut": null,
+    "latitudeOut": null,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "Rakesh Jadav",
+    "phone": "8320893238",
+    "checkInAt": "2025-11-29T06:39:17.207+00:00",
+    "checkOutAt": null,
+    "longitudeIn": 70.467179,
+    "latitudeIn": 20.8488956,
+    "longitudeOut": null,
+    "latitudeOut": null,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "Mevada Suresh",
+    "phone": "7096069368",
+    "checkInAt": "2025-11-29T04:41:56.452+00:00",
+    "checkOutAt": null,
+    "longitudeIn": 70.467179,
+    "latitudeIn": 20.8481821,
+    "longitudeOut": null,
+    "latitudeOut": null,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "Rahul yadav",
+    "phone": "6393797967",
+    "checkInAt": "2025-11-29T04:26:22.612+00:00",
+    "checkOutAt": null,
+    "longitudeIn": 70.465624,
+    "latitudeIn": 20.8491744,
+    "longitudeOut": null,
+    "latitudeOut": null,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "Rajeev Roy",
+    "phone": "9624036368",
+    "checkInAt": "2025-11-29T03:23:21.278+00:00",
+    "checkOutAt": null,
+    "longitudeIn": 70.4658169,
+    "latitudeIn": 20.8492077,
+    "longitudeOut": null,
+    "latitudeOut": null,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "khutad Kishan",
+    "phone": "9714745856",
+    "checkInAt": "2025-11-29T03:26:16.742+00:00",
+    "checkOutAt": null,
+    "longitudeIn": 70.4187947,
+    "latitudeIn": 20.8938343,
+    "longitudeOut": null,
+    "latitudeOut": null,
+    "workLocation": "kajli"
+  },
+  {
+    "name": "Vaja viram",
+    "phone": "7698318374",
+    "checkInAt": "2025-11-29T02:40:54.471+00:00",
+    "checkOutAt": null,
+    "longitudeIn": 70.4612286,
+    "latitudeIn": 20.8510475,
+    "longitudeOut": null,
+    "latitudeOut": null,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "RAM MAYUR",
+    "phone": "9723075981",
+    "checkInAt": "2025-11-29T02:33:08.302+00:00",
+    "checkOutAt": null,
+    "longitudeIn": 70.4679228,
+    "latitudeIn": 20.8482699,
+    "longitudeOut": null,
+    "latitudeOut": null,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "Jayesh Mer",
+    "phone": "9328981712",
+    "checkInAt": "2025-11-29T02:24:01.749+00:00",
+    "checkOutAt": null,
+    "longitudeIn": 70.4660633,
+    "latitudeIn": 20.8491208,
+    "longitudeOut": null,
+    "latitudeOut": null,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "Pravin Kamliya",
+    "phone": "8849910362",
+    "checkInAt": "2025-11-29T02:23:20.877+00:00",
+    "checkOutAt": null,
+    "longitudeIn": 70.4686666,
+    "latitudeIn": 20.8480009,
+    "longitudeOut": null,
+    "latitudeOut": null,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "Vipul zala ",
+    "phone": "9904358550",
+    "checkInAt": "2025-11-28T14:45:29.436+00:00",
+    "checkOutAt": "2025-11-29T02:47:34.466+00:00",
+    "longitudeIn": 70.482113,
+    "latitudeIn": 20.8411876,
+    "longitudeOut": 70.4657724,
+    "latitudeOut": 20.8488928,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "Parmar Mayur",
+    "phone": "8488047139",
+    "checkInAt": "2025-11-28T14:33:49.000+00:00",
+    "checkOutAt": "2025-11-29T02:34:14.261+00:00",
+    "longitudeIn": 70.467179,
+    "latitudeIn": 20.8481821,
+    "longitudeOut": 70.467179,
+    "latitudeOut": 20.8481821,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "Hitesh jadav",
+    "phone": "8799315197",
+    "checkInAt": "2025-11-28T14:32:53.965+00:00",
+    "checkOutAt": "2025-11-29T02:38:22.340+00:00",
+    "longitudeIn": 70.4660633,
+    "latitudeIn": 20.848764,
+    "longitudeOut": 70.4746169,
+    "latitudeOut": 20.8469189,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "Rakesh Jadav",
+    "phone": "8320893238",
+    "checkInAt": "2025-11-28T11:27:39.422+00:00",
+    "checkOutAt": "2025-11-28T16:30:39.299+00:00",
+    "longitudeIn": 70.467179,
+    "latitudeIn": 20.8488956,
+    "longitudeOut": 70.4660098,
+    "latitudeOut": 20.8489396,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "Arpit Jadav",
+    "phone": "9427916974",
+    "checkInAt": "2025-11-28T11:25:33.012+00:00",
+    "checkOutAt": "2025-11-28T16:30:42.581+00:00",
+    "longitudeIn": 70.465195,
+    "latitudeIn": 20.8483817,
+    "longitudeOut": 70.4659997,
+    "latitudeOut": 20.8489397,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "Mevada Suresh",
+    "phone": "7096069368",
+    "checkInAt": "2025-11-28T11:07:36.181+00:00",
+    "checkOutAt": "2025-11-28T14:47:08.881+00:00",
+    "longitudeIn": 70.467179,
+    "latitudeIn": 20.8481821,
+    "longitudeOut": 70.4659765,
+    "latitudeOut": 20.8492327,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "Jayesh Mer",
+    "phone": "9328981712",
+    "checkInAt": "2025-11-28T11:05:26.306+00:00",
+    "checkOutAt": "2025-11-28T12:25:46.928+00:00",
+    "longitudeIn": 70.4659696,
+    "latitudeIn": 20.8492196,
+    "longitudeOut": 70.4660633,
+    "latitudeOut": 20.8491208,
+    "workLocation": "GHCL"
+  },
+  {
+    "name": "khutad Kishan",
+    "phone": "9714745856",
+    "checkInAt": "2025-11-28T11:08:52.925+00:00",
+    "checkOutAt": "2025-11-28T14:36:14.088+00:00",
+    "longitudeIn": 70.4184284,
+    "latitudeIn": 20.8944615,
+    "longitudeOut": 70.418418,
+    "latitudeOut": 20.8944404,
+    "workLocation": "kajli"
+  }
+]
