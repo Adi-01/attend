@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getMonthlyAttendanceData } from "@/lib/attendance.actions";
+import { useRouter } from "next/navigation";
 
 // Types
 type DayStatus = {
@@ -44,6 +45,7 @@ export default function AttendanceRegister({
   const [year, setYear] = useState(initialYear);
   const [isLoading, setIsLoading] = useState(false);
   const [locationFilter, setLocationFilter] = useState<string>("All");
+  const router = useRouter();
 
   const daysInMonth = new Date(year, month, 0).getDate();
 
@@ -298,6 +300,17 @@ export default function AttendanceRegister({
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <button
+            className="p-2 bg-neutral-800 border border-neutral-700 rounded hover:bg-neutral-700 transition-colors"
+            onClick={() => {
+              router.push("/attendance");
+            }}
+          >
+            View All Data
+          </button>
         </div>
 
         {/* Download Button */}

@@ -283,19 +283,28 @@ export default function AttendanceTable({
         </div>
       </div>
 
+      <button
+        className="p-3 bg-blue-500 mb-6 rounded-full text-white/90 font-semibold hover:bg-blue-600"
+        onClick={() => {
+          router.push("/register");
+        }}
+      >
+        View Register
+      </button>
+
       {/* --- EXISTING TABLE (UNCHANGED) --- */}
       <div className="overflow-x-auto">
         <Table className="bg-black">
           <TableHeader className="bg-neutral-900 text-white">
             <TableRow className="*:border-neutral-700 [&>:not(:last-child)]:border-r">
-              <TableHead>NAME</TableHead>
-              <TableHead>PHONE</TableHead>
-              <TableHead>IN</TableHead>
-              <TableHead>IN TIME</TableHead>
-              <TableHead>OUT</TableHead>
-              <TableHead>OUT TIME</TableHead>
-              <TableHead>SHIFT</TableHead>
-              <TableHead>WORK LOCATION</TableHead>
+              <TableHead className="min-w-[150px]">NAME</TableHead>
+              <TableHead className="min-w-[150px]">PHONE</TableHead>
+              <TableHead className="min-w-[150px]">IN</TableHead>
+              <TableHead className="min-w-[150px]">IN TIME</TableHead>
+              <TableHead className="min-w-[150px]">OUT</TableHead>
+              <TableHead className="min-w-[150px]">OUT TIME</TableHead>
+              <TableHead className="min-w-[150px]">SHIFT</TableHead>
+              <TableHead className="min-w-[150px]">WORK LOCATION</TableHead>
             </TableRow>
           </TableHeader>
 
