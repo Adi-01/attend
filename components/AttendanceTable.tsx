@@ -10,11 +10,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDate, formatTime } from "@/lib/utils";
-import { MapPin, Download, Loader2, FileText } from "lucide-react";
+import { MapPin, Download, Loader2, FileText, RefreshCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { getMonthlyExportData } from "@/lib/attendance.actions"; // Import the new function
+import { getMonthlyExportData } from "@/lib/attendance.actions";
 
 // --- Helper Functions ---
 const getShift = (cin: string | null, cout: string | null) => {
@@ -45,17 +45,24 @@ export default function AttendanceTable({
 }) {
   const router = useRouter();
 
-  // --- PDF Export State ---
-  // Default to current month/year for the dropdowns
+  // --- State ---
   const [exportMonth, setExportMonth] = useState(new Date().getMonth() + 1);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
   const [isExporting, setIsExporting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false); // State for refresh spinner
+
+  // --- Refresh Logic ---
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    router.refresh(); // Refetches server data
+    // Keep spinner for a moment to show activity
+    setTimeout(() => setIsRefreshing(false), 1000);
+  };
 
   // --- PDF Generation Logic ---
   const handleExportPDF = async () => {
     setIsExporting(true);
 
-    // 1. Fetch ALL data for the month
     const res = await getMonthlyExportData(exportMonth, exportYear);
 
     if (!res.success || !res.data || res.data.length === 0) {
@@ -66,7 +73,6 @@ export default function AttendanceTable({
 
     const doc = new jsPDF({ orientation: "landscape" });
 
-    // 2. Dark Background Setup
     doc.setFillColor(0, 0, 0);
     doc.rect(
       0,
@@ -81,50 +87,40 @@ export default function AttendanceTable({
     doc.text(
       `Attendance Report - ${new Date(0, exportMonth - 1).toLocaleString(
         "default",
-        {
-          month: "long",
-        }
+        { month: "long" }
       )} ${exportYear}`,
       14,
       15
     );
 
-    // 3. Map Data (Pass Objects for In/Out Date to hold coordinates)
     const tableBody = res.data.map((item: any) => {
       const shift = getShift(item.checkInAt, item.checkOutAt);
 
-      // Helper to build the cell object
       const createLocationCell = (
         dateStr: string | null,
         lat?: number,
         lng?: number
       ) => {
         const text = dateStr ? formatDate(dateStr) : "Pending";
-        // We pass 'content' for the text, and extra props for the link logic
-        return {
-          content: text,
-          lat: lat,
-          lng: lng,
-        };
+        return { content: text, lat: lat, lng: lng };
       };
 
       return [
         item.userName,
         item.phoneNumber,
-        createLocationCell(item.checkInAt, item.latitudeIn, item.longitudeIn), // IN DATE
+        createLocationCell(item.checkInAt, item.latitudeIn, item.longitudeIn),
         formatTime(item.checkInAt) || "Pending",
         createLocationCell(
           item.checkOutAt,
           item.latitudeOut,
           item.longitudeOut
-        ), // OUT DATE
+        ),
         formatTime(item.checkOutAt) || "Pending",
         shift,
         item.workLocation || "N/A",
       ];
     });
 
-    // 4. Generate PDF Table
     autoTable(doc, {
       head: [
         [
@@ -155,34 +151,23 @@ export default function AttendanceTable({
         textColor: [255, 255, 255],
         fontStyle: "bold",
       },
-
-      // 5. Parse Cell: Color text Blue if it has coordinates
       didParseCell: (data) => {
         if (data.section === "head") return;
-
-        // Access the raw object we passed in step 3
         const raw = data.cell.raw as any;
 
-        // Logic for Location Links (Blue Text)
         if (raw && typeof raw === "object" && raw.lat && raw.lng) {
-          data.cell.styles.textColor = [45, 130, 246]; // Blue-500
+          data.cell.styles.textColor = [45, 130, 246];
           data.cell.styles.fontStyle = "bold";
-        }
-        // Logic for Status Colors (Pending/Shift) - same as before
-        else if (data.cell.raw === "Pending") {
-          data.cell.styles.textColor = [253, 224, 71]; // Yellow
+        } else if (data.cell.raw === "Pending") {
+          data.cell.styles.textColor = [253, 224, 71];
         } else if (data.cell.raw === "Day Shift") {
-          data.cell.styles.textColor = [34, 197, 94]; // Green
+          data.cell.styles.textColor = [34, 197, 94];
         } else if (data.cell.raw === "Night Shift") {
-          data.cell.styles.textColor = [59, 130, 246]; // Blue
+          data.cell.styles.textColor = [59, 130, 246];
         }
       },
-
-      // 6. Draw Cell: Add Link and "Pin" circle
       didDrawCell: (data) => {
         const raw = data.cell.raw as any;
-
-        // If this cell has coordinates, make it clickable and draw a dot
         if (
           data.section === "body" &&
           raw &&
@@ -190,7 +175,6 @@ export default function AttendanceTable({
           raw.lat &&
           raw.lng
         ) {
-          // A. Create the Link Area
           const linkUrl = `https://www.google.com/maps?q=${raw.lat},${raw.lng}`;
           doc.link(
             data.cell.x,
@@ -200,14 +184,12 @@ export default function AttendanceTable({
             { url: linkUrl }
           );
 
-          // B. Draw a visual "Pin" (Small Red Circle) to the left of the text
-          // Calculate position (centered text means we need to offset carefully)
           const textWidth = doc.getTextWidth(raw.content);
           const xPos = data.cell.x + data.cell.width / 2 - textWidth / 2 - 3;
           const yPos = data.cell.y + data.cell.height / 2;
 
-          doc.setFillColor(248, 113, 113); // Red-400
-          doc.circle(xPos, yPos, 1, "F"); // Draw small circle (radius 1)
+          doc.setFillColor(248, 113, 113);
+          doc.circle(xPos, yPos, 1, "F");
         }
       },
     });
@@ -216,7 +198,6 @@ export default function AttendanceTable({
     setIsExporting(false);
   };
 
-  // --- Pagination Logic (Unchanged) ---
   const totalPages = Math.ceil(total / limit);
   const onPageChange = (newPage: number) => {
     if (newPage === 1) router.push("/attendance");
@@ -239,7 +220,6 @@ export default function AttendanceTable({
         </div>
 
         <div className="flex gap-3">
-          {/* Month Select */}
           <select
             value={exportMonth}
             onChange={(e) => setExportMonth(Number(e.target.value))}
@@ -254,7 +234,6 @@ export default function AttendanceTable({
             ))}
           </select>
 
-          {/* Year Select */}
           <select
             value={exportYear}
             onChange={(e) => setExportYear(Number(e.target.value))}
@@ -267,7 +246,6 @@ export default function AttendanceTable({
             ))}
           </select>
 
-          {/* Download Button */}
           <button
             onClick={handleExportPDF}
             disabled={isExporting}
@@ -283,16 +261,28 @@ export default function AttendanceTable({
         </div>
       </div>
 
-      <button
-        className="p-3 bg-blue-500 mb-6 rounded-full text-white/90 font-semibold hover:bg-blue-600"
-        onClick={() => {
-          router.push("/register");
-        }}
-      >
-        View Register
-      </button>
+      {/* --- ACTION ROW: View Register & Refresh --- */}
+      <div className="flex justify-between items-center mb-6">
+        <button
+          className="px-6 py-2.5 bg-blue-500 rounded-full text-white/90 font-semibold hover:bg-blue-600 transition-all shadow-md hover:shadow-lg"
+          onClick={() => router.push("/register")}
+        >
+          View Register
+        </button>
 
-      {/* --- EXISTING TABLE (UNCHANGED) --- */}
+        <button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="flex items-center gap-2 px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-full hover:bg-neutral-700 transition-all text-sm font-medium text-neutral-200"
+        >
+          <RefreshCcw
+            className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
+          />
+          {isRefreshing ? "Reloading..." : "Reload Data"}
+        </button>
+      </div>
+
+      {/* --- TABLE --- */}
       <div className="overflow-x-auto">
         <Table className="bg-black">
           <TableHeader className="bg-neutral-900 text-white">
@@ -324,7 +314,7 @@ export default function AttendanceTable({
                   <MapPin
                     size={16}
                     className="text-red-300 group-hover:text-red-400"
-                  />{" "}
+                  />
                   <span className="-mt-px">{checkInDate || "Pending"}</span>
                 </button>
               ) : (
@@ -339,7 +329,7 @@ export default function AttendanceTable({
                   <MapPin
                     size={16}
                     className="text-red-300 group-hover:text-red-400"
-                  />{" "}
+                  />
                   <span className="-mt-px">{checkOutDate || "Pending"}</span>
                 </button>
               ) : (
@@ -384,7 +374,7 @@ export default function AttendanceTable({
         </Table>
       </div>
 
-      {/* --- PAGINATION (UNCHANGED) --- */}
+      {/* --- PAGINATION --- */}
       <div className="flex justify-center gap-4 mt-6 items-center">
         <button
           disabled={page <= 1}

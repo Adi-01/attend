@@ -55,40 +55,53 @@ export async function getMonthlyAttendanceData(month: number, year: number) {
       ],
     });
 
-    const daysInMonth = lastDay;
-
-    // Updated Type: Added workLocation
+    // Updated Types
     const userMap: Record<
       string,
       {
         userName: string;
-        workLocation: string; // New Field
-        days: Record<string, { count: number; working: boolean }>;
+        // removed top-level workLocation as it varies
+        days: Record<
+          string,
+          {
+            count: number;
+            working: boolean;
+            locations: string[]; // Track all locations for completed shifts
+            workingLocation?: string; // Track location for active shift
+          }
+        >;
       }
     > = {};
 
     res.rows.forEach((row: any) => {
+      // 1. Initialize User
       if (!userMap[row.userName]) {
         userMap[row.userName] = {
           userName: row.userName,
-          // Capture location (default to 'N/A' if missing)
-          workLocation: row.workLocation || "N/A",
           days: {},
         };
       }
 
       const dateOnly = row.checkInAt?.split("T")[0];
+      const location = row.workLocation || "N/A";
 
       if (dateOnly) {
+        // 2. Initialize Day
         const dayData = userMap[row.userName].days[dateOnly] || {
           count: 0,
           working: false,
+          locations: [],
+          workingLocation: undefined,
         };
 
         if (row.checkOutAt) {
+          // Completed Shift
           dayData.count += 1;
+          dayData.locations.push(location); // Store location
         } else {
+          // Active Shift
           dayData.working = true;
+          dayData.workingLocation = location; // Store active location
         }
 
         userMap[row.userName].days[dateOnly] = dayData;
@@ -96,6 +109,7 @@ export async function getMonthlyAttendanceData(month: number, year: number) {
     });
 
     // Fill missing days
+    const daysInMonth = lastDay;
     Object.values(userMap).forEach((u) => {
       for (let d = 1; d <= daysInMonth; d++) {
         const dateKey = `${year}-${String(month).padStart(2, "0")}-${String(
@@ -103,7 +117,7 @@ export async function getMonthlyAttendanceData(month: number, year: number) {
         ).padStart(2, "0")}`;
 
         if (!u.days[dateKey]) {
-          u.days[dateKey] = { count: 0, working: false };
+          u.days[dateKey] = { count: 0, working: false, locations: [] };
         }
       }
     });

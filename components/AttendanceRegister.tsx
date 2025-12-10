@@ -16,15 +16,16 @@ import {
 import { getMonthlyAttendanceData } from "@/lib/attendance.actions";
 import { useRouter } from "next/navigation";
 
-// Types
+// Updated Types matching Backend
 type DayStatus = {
   count: number;
   working: boolean;
+  locations: string[]; // Array of locations for completed shifts
+  workingLocation?: string; // Location of active shift
 };
 
 type UserMonthly = {
   userName: string;
-  workLocation: string;
   days: Record<string, DayStatus>;
 };
 
@@ -49,22 +50,62 @@ export default function AttendanceRegister({
 
   const daysInMonth = new Date(year, month, 0).getDate();
 
-  // 1. Get Unique Locations
+  // 1. Get Unique Locations (Scan ALL days of ALL users)
   const uniqueLocations = useMemo(() => {
-    const locs = new Set(attendanceData.map((u) => u.workLocation));
-    return ["All", ...Array.from(locs)].sort();
+    const locSet = new Set<string>();
+    attendanceData.forEach((user) => {
+      Object.values(user.days).forEach((day) => {
+        // Add completed locations
+        day.locations?.forEach((loc) => locSet.add(loc));
+        // Add active location
+        if (day.workingLocation) locSet.add(day.workingLocation);
+      });
+    });
+    return ["All", ...Array.from(locSet)].sort();
   }, [attendanceData]);
 
-  // 2. Filter Data
+  // 2. Advanced Filtering Logic
   const filteredData = useMemo(() => {
     if (locationFilter === "All") return attendanceData;
-    return attendanceData.filter((u) => u.workLocation === locationFilter);
+
+    // Filter Users AND Recalculate their daily counts based on location
+    return attendanceData
+      .map((user) => {
+        const newUser = { ...user, days: { ...user.days } };
+        let hasDataForLocation = false;
+
+        Object.keys(newUser.days).forEach((dateKey) => {
+          const originalDay = newUser.days[dateKey];
+
+          // Filter completed shifts for this location
+          const matchingCompleted = originalDay.locations.filter(
+            (loc) => loc === locationFilter
+          ).length;
+
+          // Check if active shift matches location
+          const matchesWorking = originalDay.workingLocation === locationFilter;
+
+          if (matchingCompleted > 0 || matchesWorking) {
+            hasDataForLocation = true;
+          }
+
+          // Overwrite the day data for the View to only reflect this filter
+          newUser.days[dateKey] = {
+            ...originalDay,
+            count: matchingCompleted, // Only count shifts at this location
+            working: matchesWorking, // Only show W if working at this location
+          };
+        });
+
+        // Only return user if they have at least one record for this location
+        return hasDataForLocation ? newUser : null;
+      })
+      .filter((u): u is UserMonthly => u !== null);
   }, [attendanceData, locationFilter]);
 
-  // 3. Calculate Grand Total (Sum of all user totals)
+  // 3. Calculate Grand Total
   const grandTotal = useMemo(() => {
     return filteredData.reduce((totalAcc, user) => {
-      // Sum up days for this specific user
       const userTotal = Object.values(user.days).reduce(
         (dayAcc, day) => dayAcc + day.count,
         0
@@ -91,24 +132,21 @@ export default function AttendanceRegister({
       `Attendance Register (${locationFilter}) - ${new Date(
         year,
         month - 1
-      ).toLocaleString("default", {
-        month: "long",
-      })} ${year}`,
+      ).toLocaleString("default", { month: "long" })} ${year}`,
       14,
       15
     );
 
     const tableHead = [
       "Name",
-      "Loc",
       ...Array.from({ length: daysInMonth }, (_, i) => String(i + 1)),
-      "Total", // Added Total Header to PDF
+      "Total",
     ];
 
     let pdfGrandTotal = 0;
 
     const tableBody = filteredData.map((user) => {
-      const rowData: (string | number)[] = [user.userName, user.workLocation];
+      const rowData: (string | number)[] = [user.userName];
       let userTotal = 0;
 
       for (let day = 1; day <= daysInMonth; day++) {
@@ -120,31 +158,24 @@ export default function AttendanceRegister({
           working: false,
         };
 
-        // Add to total
         userTotal += count;
 
         let display = "A";
-        if (working) {
-          display = "W";
-        } else if (count > 0) {
-          display = count === 1 ? "P" : `${count}P`;
-        }
+        if (working) display = "W";
+        else if (count > 0) display = count === 1 ? "P" : `${count}P`;
+
         rowData.push(display);
       }
 
-      // Push User Total to the end of the row
       rowData.push(userTotal);
       pdfGrandTotal += userTotal;
-
       return rowData;
     });
 
-    // Add Grand Total Row to PDF
     const grandTotalRow = [
       "GRAND TOTAL",
-      "", // Location placeholder
-      ...Array(daysInMonth).fill(""), // Empty cells for days
-      pdfGrandTotal, // Final Sum
+      ...Array(daysInMonth).fill(""),
+      pdfGrandTotal,
     ];
     tableBody.push(grandTotalRow);
 
@@ -167,32 +198,21 @@ export default function AttendanceRegister({
         fontStyle: "bold",
         lineColor: [64, 64, 64],
       },
-      bodyStyles: {
-        fillColor: [23, 23, 23],
-      },
+      bodyStyles: { fillColor: [23, 23, 23] },
       columnStyles: {
-        0: { halign: "left", fontStyle: "bold", cellWidth: 25 },
-        1: { halign: "left", cellWidth: 15 },
-        // Style the last column (Total)
-        [daysInMonth + 2]: { fontStyle: "bold", fillColor: [38, 38, 38] },
+        0: { halign: "left", fontStyle: "bold", cellWidth: 30 },
+        [daysInMonth + 1]: { fontStyle: "bold", fillColor: [38, 38, 38] },
       },
       didParseCell: function (data) {
         if (data.section === "head") return;
-
-        // Handle Grand Total Row styling
         if (data.row.index === tableBody.length - 1) {
           data.cell.styles.fontStyle = "bold";
-          data.cell.styles.fillColor = [38, 38, 38]; // Darker background
-          if (data.column.index === 0) {
-            data.cell.colSpan = daysInMonth + 2; // Span Name across empty cells
-          }
+          data.cell.styles.fillColor = [38, 38, 38];
+          if (data.column.index === 0) data.cell.colSpan = daysInMonth + 1;
           return;
         }
-
-        if (data.column.index <= 1) return;
-
-        // Skip the last column (Total) for color coding
-        if (data.column.index === daysInMonth + 2) return;
+        if (data.column.index === 0) return;
+        if (data.column.index === daysInMonth + 1) return;
 
         const text = data.cell.raw;
         if (text === "W") {
@@ -222,7 +242,6 @@ export default function AttendanceRegister({
 
   return (
     <div className="w-full p-4 text-white">
-      {/* Header & Legend */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <h1 className="text-2xl font-semibold">Attendance Register</h1>
         <div className="flex gap-4 text-sm font-medium bg-neutral-900 p-2 rounded border border-neutral-700 mt-2 md:mt-0">
@@ -241,9 +260,7 @@ export default function AttendanceRegister({
         </div>
       </div>
 
-      {/* Controls Row */}
       <div className="flex flex-wrap gap-3 mb-4 items-center">
-        {/* Month Select */}
         <select
           value={month}
           onChange={(e) => {
@@ -259,7 +276,6 @@ export default function AttendanceRegister({
           ))}
         </select>
 
-        {/* Year Select */}
         <select
           value={year}
           onChange={(e) => {
@@ -275,18 +291,15 @@ export default function AttendanceRegister({
           ))}
         </select>
 
-        {/* Refresh Button */}
         <button
           onClick={handleRefresh}
           className="p-2 bg-neutral-800 border border-neutral-700 rounded hover:bg-neutral-700 transition-colors"
-          title="Refresh Data"
         >
           <RefreshCcw
             className={`w-5 h-5 text-white ${isLoading ? "animate-spin" : ""}`}
           />
         </button>
 
-        {/* Location Filter */}
         <div className="flex items-center border border-neutral-700 bg-neutral-900 rounded px-2">
           <Filter className="w-4 h-4 text-neutral-400 mr-2" />
           <select
@@ -302,18 +315,13 @@ export default function AttendanceRegister({
           </select>
         </div>
 
-        <div>
-          <button
-            className="p-2 bg-neutral-800 border border-neutral-700 rounded hover:bg-neutral-700 transition-colors"
-            onClick={() => {
-              router.push("/attendance");
-            }}
-          >
-            View All Data
-          </button>
-        </div>
+        <button
+          onClick={() => router.push("/attendance")}
+          className="p-2.5 bg-neutral-800 border border-neutral-700 rounded hover:bg-neutral-700 transition-colors text-sm"
+        >
+          View Logs
+        </button>
 
-        {/* Download Button */}
         <button
           onClick={generatePDF}
           className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition-colors ml-auto"
@@ -323,7 +331,6 @@ export default function AttendanceRegister({
         </button>
       </div>
 
-      {/* Table */}
       <div className="overflow-x-auto border border-neutral-700 rounded-lg">
         <Table className="min-w-max bg-neutral-900 text-white text-sm">
           <TableHeader>
@@ -341,7 +348,6 @@ export default function AttendanceRegister({
                   </TableHead>
                 )
               )}
-              {/* Total Header */}
               <TableHead className="font-bold text-center w-16 bg-neutral-800 text-white border-l border-neutral-700">
                 Total
               </TableHead>
@@ -349,23 +355,18 @@ export default function AttendanceRegister({
           </TableHeader>
           <TableBody>
             {filteredData.map((user) => {
-              // Calculate Row Total
               const userTotal = Object.values(user.days).reduce(
                 (acc, day) => acc + day.count,
                 0
               );
-
               return (
                 <TableRow
                   key={user.userName}
                   className="hover:bg-neutral-800/50"
                 >
                   <TableCell className="font-medium border-r border-neutral-700 sticky left-0 bg-neutral-900 z-10">
-                    <div className="flex flex-col">
-                      <span>{user.userName}</span>
-                    </div>
+                    {user.userName}
                   </TableCell>
-
                   {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(
                     (day) => {
                       const dateKey = `${year}-${String(month).padStart(
@@ -379,7 +380,6 @@ export default function AttendanceRegister({
 
                       let display = "A";
                       let colorClass = "text-red-400";
-
                       if (working) {
                         display = "W";
                         colorClass = "text-yellow-400";
@@ -398,7 +398,6 @@ export default function AttendanceRegister({
                       );
                     }
                   )}
-                  {/* User Total Cell */}
                   <TableCell className="text-center font-bold text-white border-l border-neutral-700 bg-neutral-900/50">
                     {userTotal}
                   </TableCell>
@@ -406,20 +405,17 @@ export default function AttendanceRegister({
               );
             })}
 
-            {/* Grand Total Row */}
             {filteredData.length > 0 && (
               <TableRow className="bg-neutral-800 font-bold border-t-2 border-neutral-600">
                 <TableCell className="sticky left-0 bg-neutral-800 z-10 text-white border-r border-neutral-700">
                   GRAND TOTAL
                 </TableCell>
-                {/* Empty cells for days */}
                 {Array.from({ length: daysInMonth }).map((_, i) => (
                   <TableCell
                     key={i}
                     className="border-r border-neutral-700"
                   ></TableCell>
                 ))}
-                {/* Final Grand Total Cell */}
                 <TableCell className="text-center text-green-400 text-base border-l border-neutral-700">
                   {grandTotal}
                 </TableCell>
