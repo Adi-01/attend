@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/appwrite";
 import { appwriteConfig } from "@/lib/appwrite/config";
+import { revalidatePath } from "next/cache";
 import { Query } from "node-appwrite";
 
 export async function getAttendanceData(page = 1, limit = 10) {
@@ -163,5 +164,42 @@ export async function getMonthlyExportData(month: number, year: number) {
   } catch (error: any) {
     console.error("Export Fetch Error:", error);
     return { success: false, data: [] };
+  }
+}
+
+export async function updateAttendanceTime(
+  rowId: string,
+  field: "checkIn" | "checkOut",
+  newValue: string
+) {
+  try {
+    const { tables } = await createAdminClient();
+
+    // 1. Map the UI "field" to the actual Appwrite Column ID
+    const dbColumn = field === "checkIn" ? "checkInAt" : "checkOutAt";
+
+    // 2. Perform the update
+    const res = await tables.updateRow(
+      appwriteConfig.databaseId,
+      appwriteConfig.attendanceCollectionId,
+      rowId,
+      {
+        [dbColumn]: newValue,
+      }
+    );
+
+    // 3. Optional: Revalidate the cache so the page updates immediately
+    revalidatePath("/attendance");
+
+    return {
+      success: true,
+      updatedRow: res,
+    };
+  } catch (error: any) {
+    console.error("Update Attendance Error:", error);
+    return {
+      success: false,
+      error: error?.message || "Failed to update attendance record",
+    };
   }
 }
