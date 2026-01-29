@@ -3,10 +3,10 @@
 import {
   Client,
   Account,
-  Avatars,
   Databases,
   Storage,
   TablesDB,
+  Users,
 } from "node-appwrite";
 import { cookies } from "next/headers";
 import { appwriteConfig } from "@/lib/appwrite/config";
@@ -42,30 +42,27 @@ export const createSessionClient = async () => {
  * Creates an admin client using API key.
  * Used for signup, login, email verification, file uploads, etc.
  */
-const adminClient = new Client()
-  .setEndpoint(appwriteConfig.endpoint)
-  .setProject(appwriteConfig.projectId)
-  .setKey(appwriteConfig.secretKey);
+export async function createAdminClient() {
+  const client = new Client()
+    .setEndpoint(appwriteConfig.endpoint!)
+    .setProject(appwriteConfig.projectId!)
+    .setKey(process.env.APPWRITE_KEY!);
 
-const admin = {
-  get account() {
-    return new Account(adminClient);
-  },
-  get databases() {
-    return new Databases(adminClient);
-  },
-  get storage() {
-    return new Storage(adminClient);
-  },
-  get avatars() {
-    return new Avatars(adminClient);
-  },
-  get tables() {
-    return new TablesDB(adminClient);
-  },
-};
-
-/**
- * Reusable optimized admin client
- */
-export const createAdminClient = async () => admin;
+  return {
+    get account() {
+      return new Account(client);
+    },
+    get databases() {
+      return new Databases(client);
+    },
+    get users() {
+      return new Users(client);
+    },
+    get tables() {
+      return new TablesDB(client);
+    },
+    get storage() {
+      return new Storage(client);
+    },
+  };
+}

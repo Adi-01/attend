@@ -1,21 +1,54 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export const config = {
-  matcher: ["/", "/attendance"],
-};
-
 export function proxy(request: NextRequest) {
-  const session = request.cookies.get("appwrite-session");
+  const { pathname } = request.nextUrl;
 
-  // 1) If user visits "/", redirect to "/attendance" if logged in
-  if (request.nextUrl.pathname === "/") {
-    if (session?.value) {
-      return NextResponse.redirect(new URL("/attendance", request.url));
-    } else {
+  const session = request.cookies.get("appwrite-session")?.value;
+  const label = request.cookies.get("user-label")?.value; // "admin" | ""
+
+  // 🚫 Not logged in → always go to /login
+  if (!session) {
+    if (pathname !== "/login") {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // 🔁 Logged-in users should never see /login
+  if (pathname === "/login") {
+    if (label === "admin") {
       return NextResponse.redirect(new URL("/attendance", request.url));
     }
+    return NextResponse.redirect(new URL("/mark-attendance", request.url));
+  }
+
+  // 🏠 Root redirect
+  if (pathname === "/") {
+    if (label === "admin") {
+      return NextResponse.redirect(new URL("/attendance", request.url));
+    }
+    return NextResponse.redirect(new URL("/mark-attendance", request.url));
+  }
+
+  // 🔒 Admin-only routes (non-admins blocked)
+  if (
+    (pathname.startsWith("/attendance") || pathname.startsWith("/register")) &&
+    label !== "admin"
+  ) {
+    return NextResponse.redirect(new URL("/mark-attendance", request.url));
   }
 
   return NextResponse.next();
 }
+
+export const config = {
+  matcher: [
+    "/",
+    "/login",
+    "/attendance",
+    "/register",
+    "/mark-attendance",
+    "/my-attendance",
+  ],
+};

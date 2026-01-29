@@ -40,6 +40,7 @@ import {
 import { useRouter } from "next/navigation";
 import { generateAttendancePDF, getShift } from "@/lib/utils";
 import { updateAttendanceTime } from "@/lib/attendance.actions";
+import Link from "next/link";
 // TODO: Import your actual update server action here
 // import { updateAttendanceTime } from "@/lib/attendance.actions";
 
@@ -224,7 +225,7 @@ const EditTimeDialog = ({
       const result = await updateAttendanceTime(
         state.rowId!,
         state.field!,
-        isoDate
+        isoDate,
       );
 
       if (result.success) {
@@ -465,6 +466,12 @@ const ActionToolbar = ({ onViewRegister, onRefresh, isRefreshing }: any) => (
     >
       View Register
     </button>
+    <Link
+      href="/mark-attendance"
+      className="px-6 py-2.5 rounded-full bg-white/20"
+    >
+      Mark Attendance
+    </Link>
     <button
       onClick={onRefresh}
       disabled={isRefreshing}

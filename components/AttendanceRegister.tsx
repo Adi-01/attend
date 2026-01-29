@@ -39,7 +39,7 @@ export default function AttendanceRegister({
   initialYear: number;
 }) {
   const [attendanceData, setAttendanceData] = useState<UserMonthly[]>(
-    initialData.attendanceData
+    initialData.attendanceData,
   );
 
   const [month, setMonth] = useState(initialMonth);
@@ -79,7 +79,7 @@ export default function AttendanceRegister({
 
           // Filter completed shifts for this location
           const matchingCompleted = originalDay.locations.filter(
-            (loc) => loc === locationFilter
+            (loc) => loc === locationFilter,
           ).length;
 
           // Check if active shift matches location
@@ -108,7 +108,7 @@ export default function AttendanceRegister({
     return filteredData.reduce((totalAcc, user) => {
       const userTotal = Object.values(user.days).reduce(
         (dayAcc, day) => dayAcc + day.count,
-        0
+        0,
       );
       return totalAcc + userTotal;
     }, 0);
@@ -124,17 +124,17 @@ export default function AttendanceRegister({
       0,
       doc.internal.pageSize.width,
       doc.internal.pageSize.height,
-      "F"
+      "F",
     );
 
     doc.setTextColor(255, 255, 255);
     doc.text(
       `Attendance Register (${locationFilter}) - ${new Date(
         year,
-        month - 1
+        month - 1,
       ).toLocaleString("default", { month: "long" })} ${year}`,
       14,
-      15
+      15,
     );
 
     const tableHead = [
@@ -151,7 +151,7 @@ export default function AttendanceRegister({
 
       for (let day = 1; day <= daysInMonth; day++) {
         const dateKey = `${year}-${String(month).padStart(2, "0")}-${String(
-          day
+          day,
         ).padStart(2, "0")}`;
         const { count, working } = user.days[dateKey] || {
           count: 0,
@@ -321,6 +321,12 @@ export default function AttendanceRegister({
         >
           View Logs
         </button>
+        <button
+          onClick={() => router.push("/mark-attendance")}
+          className="p-2.5 bg-neutral-800 border border-neutral-700 rounded hover:bg-neutral-700 transition-colors text-sm"
+        >
+          Mark Attendance
+        </button>
 
         <button
           onClick={generatePDF}
@@ -346,7 +352,7 @@ export default function AttendanceRegister({
                   >
                     {day}
                   </TableHead>
-                )
+                ),
               )}
               <TableHead className="font-bold text-center w-16 bg-neutral-800 text-white border-l border-neutral-700">
                 Total
@@ -357,7 +363,7 @@ export default function AttendanceRegister({
             {filteredData.map((user) => {
               const userTotal = Object.values(user.days).reduce(
                 (acc, day) => acc + day.count,
-                0
+                0,
               );
               return (
                 <TableRow
@@ -371,7 +377,7 @@ export default function AttendanceRegister({
                     (day) => {
                       const dateKey = `${year}-${String(month).padStart(
                         2,
-                        "0"
+                        "0",
                       )}-${String(day).padStart(2, "0")}`;
                       const { count, working } = user.days[dateKey] || {
                         count: 0,
@@ -396,7 +402,7 @@ export default function AttendanceRegister({
                           {display}
                         </TableCell>
                       );
-                    }
+                    },
                   )}
                   <TableCell className="text-center font-bold text-white border-l border-neutral-700 bg-neutral-900/50">
                     {userTotal}
