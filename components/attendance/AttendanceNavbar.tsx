@@ -5,7 +5,8 @@ import { Logo } from "./logo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "../ui/button";
-import { CalendarDays, MapPin, Shield } from "lucide-react";
+import { CalendarDays, MapPin, Shield, LogOut } from "lucide-react";
+import { logoutAction } from "@/lib/actions/employee.actions"; // Import the action
 
 type Props = {
   role: string;
@@ -34,6 +35,7 @@ export const AuthNavbar = ({ role }: Props) => {
                   size="icon"
                   variant="ghost"
                   className="text-white hover:bg-white/10"
+                  title="Admin Dashboard"
                 >
                   <Shield className="h-5 w-5" />
                 </Button>
@@ -46,6 +48,7 @@ export const AuthNavbar = ({ role }: Props) => {
                   size="icon"
                   variant="ghost"
                   className="text-white hover:bg-white/10"
+                  title="Mark Attendance"
                 >
                   <MapPin className="h-5 w-5" />
                 </Button>
@@ -58,11 +61,28 @@ export const AuthNavbar = ({ role }: Props) => {
                   size="icon"
                   variant="ghost"
                   className="text-white hover:bg-white/10"
+                  title="My History"
                 >
                   <CalendarDays className="h-5 w-5" />
                 </Button>
               </Link>
             )}
+
+            {/* Vertical Divider */}
+            <div className="h-6 w-px bg-white/10 mx-1" />
+
+            {/* Logout Button */}
+            <form action={logoutAction}>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                title="Sign Out"
+                type="submit"
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
+            </form>
           </div>
         </div>
       </motion.div>

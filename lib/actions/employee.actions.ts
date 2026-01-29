@@ -31,7 +31,7 @@ export async function signInAction(formData: FormData) {
     cookieStore.set(SESSION_COOKIE_NAME, session.secret, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
       path: "/",
       maxAge: SESSION_MAX_AGE,
     });
@@ -71,8 +71,10 @@ export async function logoutAction() {
 
   const cookieStore = await cookies();
   cookieStore.delete(SESSION_COOKIE_NAME);
+  cookieStore.delete(LABEL_COOKIE_NAME);
+  cookieStore.delete(USERNAME_COOKIE_NAME);
 
-  redirect("/employee-login");
+  redirect("/login");
 }
 
 export async function sendPasswordRecovery(email: string) {
