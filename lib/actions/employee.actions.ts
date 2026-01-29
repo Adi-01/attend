@@ -40,7 +40,7 @@ export async function signInAction(formData: FormData) {
     cookieStore.set(LABEL_COOKIE_NAME, label, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
       path: "/",
       maxAge: SESSION_MAX_AGE,
     });
@@ -49,7 +49,7 @@ export async function signInAction(formData: FormData) {
     cookieStore.set(USERNAME_COOKIE_NAME, username, {
       httpOnly: true, // safe: read in server layout
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
       path: "/",
       maxAge: SESSION_MAX_AGE,
     });
