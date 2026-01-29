@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { signInAction } from "@/lib/actions/employee.actions";
+import Link from "next/link";
 
 export default function AuthForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -33,11 +34,12 @@ export default function AuthForm() {
       toast.success("Welcome back!");
 
       if (result.success) {
-        router.push("/");
+        router.refresh();
       }
     } catch (error) {
       toast.error("Something went wrong");
       setLoading(false);
+      router.refresh();
     }
   }
 
@@ -112,6 +114,14 @@ export default function AuthForm() {
                 </span>
               )}
             </Button>
+            <div className="flex justify-end mb-5">
+              <Link
+                href="/forgot-password"
+                className="text-sm text-blue-400 hover:underline transition-colors"
+              >
+                Forgot Password?
+              </Link>
+            </div>
           </form>
         </div>
       </motion.div>

@@ -74,3 +74,47 @@ export async function logoutAction() {
 
   redirect("/employee-login");
 }
+
+export async function sendPasswordRecovery(email: string) {
+  try {
+    const { account } = await createAdminClient();
+    await account.createRecovery({
+      email,
+      url: "https://attend-theta-three.vercel.app/reset-password",
+    });
+    return { success: true };
+  } catch (error: any) {
+    console.error(error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function completePasswordRecovery(
+  userId: string,
+  secret: string,
+  password: string,
+  passwordAgain: string,
+) {
+  try {
+    // Basic validation
+    if (password !== passwordAgain) {
+      return { success: false, error: "Passwords do not match" };
+    }
+    if (password.length < 8) {
+      return {
+        success: false,
+        error: "Password must be at least 8 characters",
+      };
+    }
+
+    const { account } = await createAdminClient();
+
+    // Appwrite verifies the token (secret) and updates the password here
+    await account.updateRecovery(userId, secret, password);
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Reset Password Error:", error);
+    return { success: false, error: error.message };
+  }
+}
