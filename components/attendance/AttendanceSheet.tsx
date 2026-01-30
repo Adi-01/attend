@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Select,
   SelectContent,
@@ -8,9 +8,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMonthlyAttendance } from "@/lib/actions/employee.attendance.queries";
+import { CalendarCheck } from "lucide-react";
 
 // Constants
 const MONTHS = [
@@ -48,6 +55,13 @@ export default function AttendanceSheet() {
   // --- Calendar Math ---
   const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
   const startDayOfWeek = new Date(selectedYear, selectedMonth, 1).getDay();
+
+  // --- Calculate Worked Days ---
+  const totalShifts = useMemo(() => {
+    if (!attendanceMap) return 0;
+    // Sum the values: {1: 1, 2: 2} => 1 + 2 = 3
+    return Object.values(attendanceMap).reduce((acc, count) => acc + count, 0);
+  }, [attendanceMap]);
 
   // --- Render Helpers ---
   const renderDay = (day: number) => {
@@ -177,7 +191,6 @@ export default function AttendanceSheet() {
 
           {isLoading ? (
             // --- SKELETON STATE ---
-            // Render 35 generic empty slots to simulate a month
             Array.from({ length: 35 }).map((_, i) => (
               <Skeleton
                 key={`skel-${i}`}
@@ -197,6 +210,31 @@ export default function AttendanceSheet() {
           )}
         </div>
       </CardContent>
+
+      <CardFooter className="border-t border-zinc-800 pt-6">
+        <div className="w-full flex items-center justify-between px-2">
+          <div className="flex items-center gap-3 text-zinc-400">
+            <div className="p-2 bg-zinc-900 rounded-lg border border-zinc-800">
+              <CalendarCheck className="w-5 h-5 text-indigo-400" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+                Monthly Summary
+              </span>
+              {isLoading ? (
+                <Skeleton className="h-5 w-32 mt-1 bg-zinc-800" />
+              ) : (
+                <span className="text-sm text-white font-medium">
+                  Completed Shifts ={" "}
+                  <span className="text-green-400 font-bold">
+                    {totalShifts}
+                  </span>{" "}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardFooter>
     </Card>
   );
 }
