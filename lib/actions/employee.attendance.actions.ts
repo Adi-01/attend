@@ -159,7 +159,6 @@ export async function getMonthlyAttendanceSheet(month: number, year: number) {
 
     // Calculate First and Last ms of the month
     const startDate = new Date(year, month - 1, 1, 0, 0, 0).toISOString();
-    // Day 0 of next month = last day of current month
     const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
 
     const res = await databases.listDocuments(
@@ -169,20 +168,21 @@ export async function getMonthlyAttendanceSheet(month: number, year: number) {
         Query.equal("userId", user.$id),
         Query.greaterThanEqual("checkInAt", startDate),
         Query.lessThanEqual("checkInAt", endDate),
+        Query.isNotNull("checkOutAt"),
         Query.limit(100),
       ],
     );
 
-    // Transform to a Map: { [day: number]: count }
-    // Example: { 1: 1, 5: 2, 12: 1 } (Day 1 has 1 shift, Day 5 has 2 shifts...)
     const attendanceMap: Record<number, number> = {};
 
     res.documents.forEach((doc: any) => {
-      // Parse the day from checkInAt string (YYYY-MM-DD...)
-      const dateObj = new Date(doc.checkInAt);
-      const day = dateObj.getDate();
+      // ⬇️ UPDATE: Only count if checkOutAt exists (is not null/undefined/empty)
+      if (doc.checkOutAt) {
+        const dateObj = new Date(doc.checkInAt);
+        const day = dateObj.getDate();
 
-      attendanceMap[day] = (attendanceMap[day] || 0) + 1;
+        attendanceMap[day] = (attendanceMap[day] || 0) + 1;
+      }
     });
 
     return { success: true, data: attendanceMap };

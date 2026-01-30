@@ -33,6 +33,7 @@ export function useMonthlyAttendance(month: number, year: number) {
       // API expects 1-12, UI sends 1-12 (we handle the +1 conversion in the component)
       const res = await getMonthlyAttendanceSheet(month, year);
       if (!res.success) throw new Error("Failed to fetch attendance");
+
       return res.data; // Returns Record<number, number>
     },
     staleTime: 1000 * 60 * 10, // 10 minutes cache
