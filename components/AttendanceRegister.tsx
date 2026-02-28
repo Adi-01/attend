@@ -1,7 +1,19 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { RefreshCcw, Download, Filter } from "lucide-react";
+import {
+  RefreshCcw,
+  Download,
+  Filter,
+  Menu,
+  ClipboardList,
+  UserCheck,
+  FileText,
+  ClockFading,
+  X,
+  Check,
+  CheckCheck,
+} from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -13,8 +25,31 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { getMonthlyAttendanceData } from "@/lib/attendance.actions";
 import { useRouter } from "next/navigation";
+import { Separator } from "./ui/separator";
 
 // Updated Types matching Backend
 type DayStatus = {
@@ -239,122 +274,260 @@ export default function AttendanceRegister({
   };
 
   const handleRefresh = () => fetchData(month, year);
+  const currentYear = new Date().getFullYear();
+  const years = [currentYear - 1, currentYear, currentYear + 1].map(String);
 
   return (
-    <div className="w-full p-4 text-white">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-        <h1 className="text-2xl font-semibold">Attendance Register</h1>
-        <div className="flex gap-4 text-sm font-medium bg-neutral-900 p-2 rounded border border-neutral-700 mt-2 md:mt-0">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-green-400"></span>
-            <span className="text-green-400">P = Present</span>
+    <div className="mx-6 md:mx-14 text-white my-8">
+      {/* 1. Unified Control Navbar */}
+      <div className="flex justify-between items-center bg-neutral-900 border border-neutral-800 p-2 rounded-full shadow-lg mb-8 w-full">
+        {/* LEFT SIDE: Actions & Filters */}
+        <div className="flex items-center gap-2 pl-2">
+          {/* DESKTOP: Icon-only actions */}
+          <div className="hidden sm:flex items-center gap-2">
+            <Button
+              onClick={() => router.push("/attendance")}
+              variant="ghost"
+              size="icon"
+              className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
+              title="View Daily Logs"
+            >
+              <FileText className="w-5 h-5" />
+            </Button>
+            <Button
+              onClick={() => router.push("/mark-attendance")}
+              variant="ghost"
+              size="icon"
+              className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
+              title="Mark Attendance"
+            >
+              <UserCheck className="w-5 h-5" />
+            </Button>
+            <Button
+              onClick={handleRefresh}
+              disabled={isLoading}
+              variant="ghost"
+              size="icon"
+              className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
+              title="Reload Data"
+            >
+              <RefreshCcw
+                className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`}
+              />
+            </Button>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-red-400"></span>
-            <span className="text-red-400">A = Absent</span>
+
+          {/* MOBILE: Hamburger Menu */}
+          <div className="sm:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full text-neutral-300 hover:bg-neutral-800"
+                >
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="bg-neutral-900 border-neutral-800 text-white rounded-xl"
+              >
+                <DropdownMenuItem
+                  onClick={() => router.push("/attendance")}
+                  className="cursor-pointer hover:bg-neutral-800"
+                >
+                  <FileText className="w-4 h-4 mr-2" /> View Daily Logs
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => router.push("/mark-attendance")}
+                  className="cursor-pointer hover:bg-neutral-800"
+                >
+                  <UserCheck className="w-4 h-4 mr-2" /> Mark Attendance
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleRefresh}
+                  disabled={isLoading}
+                  className="cursor-pointer hover:bg-neutral-800"
+                >
+                  <RefreshCcw
+                    className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+                  />{" "}
+                  Reload Data
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-yellow-400"></span>
-            <span className="text-yellow-400">W = Working</span>
-          </div>
+
+          {/* FILTER POPUP (Desktop & Mobile) */}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white relative"
+                title="Filters"
+              >
+                <Filter className="w-5 h-5" />
+                {locationFilter !== "All" && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>
+                )}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-neutral-900 border-neutral-800 text-white sm:max-w-[400px] rounded-2xl">
+              <DialogHeader>
+                <DialogTitle>Filter Register</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-6 py-4">
+                <div className="flex flex-col gap-3">
+                  <Label className="text-neutral-400">Select Month</Label>
+                  <Select
+                    value={month.toString()}
+                    onValueChange={(v) => {
+                      const m = Number(v);
+                      setMonth(m);
+                      fetchData(m, year);
+                    }}
+                  >
+                    <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
+                      <SelectValue placeholder="Month" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                        <SelectItem
+                          key={m}
+                          value={m.toString()}
+                          className="focus:bg-neutral-800 focus:text-white cursor-pointer"
+                        >
+                          {new Date(0, m - 1).toLocaleString("en-US", {
+                            month: "long",
+                          })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <Label className="text-neutral-400">Select Year</Label>
+                  <Select
+                    value={year.toString()}
+                    onValueChange={(v) => {
+                      const y = Number(v);
+                      setYear(y);
+                      fetchData(month, y);
+                    }}
+                  >
+                    <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
+                      {years.map((y) => (
+                        <SelectItem
+                          key={y}
+                          value={y.toString()}
+                          className="focus:bg-neutral-800 focus:text-white cursor-pointer"
+                        >
+                          {y}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <Label className="text-neutral-400">Select Location</Label>
+                  <Select
+                    value={locationFilter}
+                    onValueChange={setLocationFilter}
+                  >
+                    <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
+                      <SelectValue placeholder="Location" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
+                      {uniqueLocations.map((loc) => (
+                        <SelectItem
+                          key={loc}
+                          value={loc}
+                          className="focus:bg-neutral-800 focus:text-white cursor-pointer"
+                        >
+                          {loc}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
-      </div>
 
-      <div className="flex flex-wrap gap-3 mb-4 items-center">
-        <select
-          value={month}
-          onChange={(e) => {
-            setMonth(Number(e.target.value));
-            fetchData(Number(e.target.value), year);
-          }}
-          className="border border-neutral-700 bg-neutral-900 text-white rounded px-3 py-2"
-        >
-          {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-            <option value={m} key={m}>
-              {new Date(0, m - 1).toLocaleString("en-US", { month: "long" })}
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={year}
-          onChange={(e) => {
-            setYear(Number(e.target.value));
-            fetchData(month, Number(e.target.value));
-          }}
-          className="border border-neutral-700 bg-neutral-900 text-white rounded px-3 py-2"
-        >
-          {[2024, 2025, 2026].map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </select>
-
-        <button
-          onClick={handleRefresh}
-          className="p-2 bg-neutral-800 border border-neutral-700 rounded hover:bg-neutral-700 transition-colors"
-        >
-          <RefreshCcw
-            className={`w-5 h-5 text-white ${isLoading ? "animate-spin" : ""}`}
-          />
-        </button>
-
-        <div className="flex items-center border border-neutral-700 bg-neutral-900 rounded px-2">
-          <Filter className="w-4 h-4 text-neutral-400 mr-2" />
-          <select
-            value={locationFilter}
-            onChange={(e) => setLocationFilter(e.target.value)}
-            className="bg-transparent text-white py-2 focus:outline-none"
+        {/* RIGHT SIDE: Export Button */}
+        <div className="pr-1">
+          <Button
+            onClick={generatePDF}
+            variant="secondary"
+            className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5"
           >
-            {uniqueLocations.map((loc) => (
-              <option key={loc} value={loc} className="bg-neutral-900">
-                {loc}
-              </option>
-            ))}
-          </select>
+            <Download className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Export PDF</span>
+          </Button>
         </div>
-
-        <button
-          onClick={() => router.push("/attendance")}
-          className="p-2.5 bg-neutral-800 border border-neutral-700 rounded hover:bg-neutral-700 transition-colors text-sm"
-        >
-          View Logs
-        </button>
-        <button
-          onClick={() => router.push("/mark-attendance")}
-          className="p-2.5 bg-neutral-800 border border-neutral-700 rounded hover:bg-neutral-700 transition-colors text-sm"
-        >
-          Mark Attendance
-        </button>
-
-        <button
-          onClick={generatePDF}
-          className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition-colors ml-auto"
-        >
-          <Download className="w-4 h-4" />
-          Export PDF
-        </button>
       </div>
 
-      <div className="overflow-x-auto border border-neutral-700 rounded-lg">
-        <Table className="min-w-max bg-neutral-900 text-white text-sm">
+      {/* 2. Header & Legend beneath Navbar */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-2xl font-semibold">Attendance Register</h1>
+          {locationFilter !== "All" && (
+            <span className="text-neutral-400 text-sm bg-neutral-800 px-2 py-0.5 rounded-full">
+              {locationFilter}
+            </span>
+          )}
+        </div>
+
+        <div className="flex gap-4 text-sm font-medium bg-neutral-900 p-2 px-4 rounded-full border border-neutral-800 mt-4 md:mt-0 shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-green-400 flex flex-row items-center justify-center">
+              <Check className="w-4 h-4 -mb-0.5 mr-1" /> = Present
+            </span>
+            <Separator orientation="vertical" className="bg-neutral-600" />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-red-400 flex flex-row items-center justify-center">
+              <X className="w-4 h-4 -mb-0.5 mr-1" /> = Absent
+            </span>
+            <Separator orientation="vertical" className="bg-neutral-600" />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-yellow-400 flex flex-row items-center justify-center">
+              <ClockFading className="w-4 h-4 -mb-0.5 mr-1" /> = Working
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Data Table */}
+      <div className="overflow-x-auto border border-neutral-800 rounded-lg shadow-xl">
+        <Table className="min-w-max bg-black text-white text-sm">
           <TableHeader>
-            <TableRow className="bg-neutral-800 border-b border-neutral-700">
-              <TableHead className="font-bold w-32 border-r border-neutral-700 sticky left-0 bg-neutral-800 z-10">
+            <TableRow className="bg-neutral-900 border-b border-neutral-800">
+              <TableHead className="font-bold w-50 border-r border-neutral-800 sticky left-0 bg-neutral-900 z-10 text-white">
                 Name
               </TableHead>
               {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(
                 (day) => (
                   <TableHead
                     key={day}
-                    className="text-center border-r border-neutral-700 min-w-10 px-1 text-neutral-300"
+                    className="text-center border-r border-neutral-800 min-w-10 px-1 text-neutral-400"
                   >
                     {day}
                   </TableHead>
                 ),
               )}
-              <TableHead className="font-bold text-center w-16 bg-neutral-800 text-white border-l border-neutral-700">
+              <TableHead className="font-bold text-center w-16 bg-neutral-900 text-white border-l border-neutral-800">
                 Total
               </TableHead>
             </TableRow>
@@ -368,9 +541,9 @@ export default function AttendanceRegister({
               return (
                 <TableRow
                   key={user.userName}
-                  className="hover:bg-neutral-800/50"
+                  className="hover:bg-neutral-800/40 border-b border-neutral-800"
                 >
-                  <TableCell className="font-medium border-r border-neutral-700 sticky left-0 bg-neutral-900 z-10">
+                  <TableCell className="font-medium border-r border-neutral-800 sticky left-0 bg-black z-10 group-hover:bg-neutral-900 transition-colors">
                     {user.userName}
                   </TableCell>
                   {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(
@@ -384,27 +557,36 @@ export default function AttendanceRegister({
                         working: false,
                       };
 
-                      let display = "A";
-                      let colorClass = "text-red-400";
+                      let display: React.ReactNode = (
+                        <X className="w-4 h-4 mx-auto" />
+                      );
+                      let colorClass = "text-neutral-600"; // Dimmed absent color
                       if (working) {
-                        display = "W";
-                        colorClass = "text-yellow-400";
+                        display = <ClockFading size={14} className="mx-auto" />;
+                        colorClass = "text-yellow-400 font-semibold";
                       } else if (count > 0) {
-                        display = count === 1 ? "P" : `${count}P`;
-                        colorClass = "text-green-400";
+                        display =
+                          count === 1 ? (
+                            <Check className="w-4 h-4 mx-auto" />
+                          ) : (
+                            <CheckCheck className="w-4 h-4 mx-auto" />
+                          );
+                        colorClass = "text-green-400 font-medium";
+                      } else {
+                        colorClass = "text-red-500 font-medium opacity-60"; // A bit subtle for absent
                       }
 
                       return (
                         <TableCell
                           key={`${user.userName}-${day}`}
-                          className={`text-center border-r border-neutral-700 p-1 ${colorClass}`}
+                          className={`text-center border-r border-neutral-800 p-1 ${colorClass}`}
                         >
                           {display}
                         </TableCell>
                       );
                     },
                   )}
-                  <TableCell className="text-center font-bold text-white border-l border-neutral-700 bg-neutral-900/50">
+                  <TableCell className="text-center font-bold text-white border-l border-neutral-800 bg-neutral-900/30">
                     {userTotal}
                   </TableCell>
                 </TableRow>
@@ -412,17 +594,17 @@ export default function AttendanceRegister({
             })}
 
             {filteredData.length > 0 && (
-              <TableRow className="bg-neutral-800 font-bold border-t-2 border-neutral-600">
-                <TableCell className="sticky left-0 bg-neutral-800 z-10 text-white border-r border-neutral-700">
+              <TableRow className="bg-neutral-900 font-bold border-t-2 border-neutral-700">
+                <TableCell className="sticky left-0 bg-neutral-900 z-10 text-white border-r border-neutral-800">
                   GRAND TOTAL
                 </TableCell>
                 {Array.from({ length: daysInMonth }).map((_, i) => (
                   <TableCell
                     key={i}
-                    className="border-r border-neutral-700"
+                    className="border-r border-neutral-800"
                   ></TableCell>
                 ))}
-                <TableCell className="text-center text-green-400 text-base border-l border-neutral-700">
+                <TableCell className="text-center text-blue-400 text-base border-l border-neutral-800">
                   {grandTotal}
                 </TableCell>
               </TableRow>
@@ -432,7 +614,7 @@ export default function AttendanceRegister({
               <TableRow>
                 <TableCell
                   colSpan={daysInMonth + 2}
-                  className="text-center py-8 text-neutral-500"
+                  className="text-center py-10 text-neutral-500 bg-black"
                 >
                   No users found for this location.
                 </TableCell>

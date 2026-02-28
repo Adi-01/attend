@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,13 +37,22 @@ import {
   MoreVertical,
   Edit,
   CalendarClock,
+  ClipboardList,
+  UserCheck,
+  Menu,
+  ClockFading,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useRouter } from "next/navigation";
 import { generateAttendancePDF, getShift } from "@/lib/utils";
 import { updateAttendanceTime } from "@/lib/attendance.actions";
 import Link from "next/link";
-// TODO: Import your actual update server action here
-// import { updateAttendanceTime } from "@/lib/attendance.actions";
 
 // --- TYPES ---
 type EditState = {
@@ -120,22 +130,20 @@ export default function AttendanceTable({
         onSuccess={handleRefresh} // Refresh table after save
       />
 
-      {/* 2. Controls Section */}
-      <ExportControls
+      {/* 2 & 3. Unified Control Navbar */}
+      <ControlNavbar
         month={exportMonth}
         year={exportYear}
         setMonth={setExportMonth}
         setYear={setExportYear}
         onExport={handleExport}
         isExporting={isExporting}
-      />
-
-      {/* 3. Actions Row */}
-      <ActionToolbar
         onViewRegister={() => router.push("/register")}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
       />
+
+      <h1 className="text-2xl mb-5 font-medium">Daily Attendance Record</h1>
 
       {/* 4. Data Table */}
       <div className="overflow-x-auto rounded-md border border-neutral-800">
@@ -149,13 +157,14 @@ export default function AttendanceTable({
                 "IN TIME",
                 "OUT",
                 "OUT TIME",
+                "HOURS", // <--- ADDED HOURS HEADER HERE
                 "SHIFT",
                 "LOCATION",
                 "",
               ].map((h, i) => (
                 <TableHead
                   key={i}
-                  className={`min-w-[120px] ${
+                  className={`min-w-[150px] ${
                     h === "" ? "w-[50px] min-w-[50px]" : ""
                   }`}
                 >
@@ -204,11 +213,9 @@ const EditTimeDialog = ({
   const [loading, setLoading] = useState(false);
   const [newDate, setNewDate] = useState("");
 
-  // Convert ISO string to "YYYY-MM-DDTHH:mm" for the input field
   const getInputValue = () => {
     if (!state.currentValue) return "";
     const date = new Date(state.currentValue);
-    // Adjust for timezone offset to show correct local time in picker
     const offset = date.getTimezoneOffset() * 60000;
     const localISOTime = new Date(date.getTime() - offset)
       .toISOString()
@@ -221,7 +228,6 @@ const EditTimeDialog = ({
       setLoading(true);
       const isoDate = new Date(newDate).toISOString();
 
-      // CALL THE FUNCTION HERE
       const result = await updateAttendanceTime(
         state.rowId!,
         state.field!,
@@ -229,7 +235,7 @@ const EditTimeDialog = ({
       );
 
       if (result.success) {
-        onSuccess(); // Triggers the table refresh
+        onSuccess();
         onClose();
       } else {
         alert(result.error);
@@ -298,6 +304,33 @@ const AttendanceRow = ({ item, openMap, onEdit }: any) => {
   const cinTime = formatTime(item.checkInAt);
   const coutTime = formatTime(item.checkOutAt);
 
+  // --- ADDED HOURS CALCULATION HELPER ---
+  const calculateHours = (checkIn: string, checkOut: string) => {
+    if (!checkIn)
+      return <Pill text="Pending" color="bg-yellow-900/40 text-yellow-300" />;
+
+    // If there is a check-in but no check-out, they are currently working
+    if (checkIn && !checkOut)
+      return <Pill text="Working" color="bg-blue-900/40 text-blue-300" />;
+
+    const inDate = new Date(checkIn).getTime();
+    const outDate = new Date(checkOut).getTime();
+    const diffMs = outDate - inDate;
+
+    if (diffMs < 0)
+      return <span className="text-red-400 text-sm">Invalid</span>;
+
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const hours = Math.floor(diffMins / 60);
+    const minutes = diffMins % 60;
+
+    return (
+      <span className="font-medium">
+        {hours}h {minutes}m
+      </span>
+    );
+  };
+
   return (
     <TableRow className="*:border-neutral-700 [&>:not(:last-child)]:border-r bg-black hover:bg-neutral-800/40 group">
       <TableCell>{item.userName}</TableCell>
@@ -332,13 +365,17 @@ const AttendanceRow = ({ item, openMap, onEdit }: any) => {
           <Pill text="Pending" color="bg-yellow-900/40 text-yellow-300" />
         )}
       </TableCell>
+
+      {/* --- ADDED HOURS CELL --- */}
+      <TableCell>{calculateHours(item.checkInAt, item.checkOutAt)}</TableCell>
+
       <TableCell>
         {shift === "Pending" ? (
           <Pill text="Pending" color="bg-yellow-900/40 text-yellow-300" />
         ) : shift === "Day Shift" ? (
-          <Pill text="DAY" color="bg-green-800 text-white" />
+          <Pill text="DAY" color="bg-green-800 text-white" val />
         ) : (
-          <Pill text="NIGHT" color="bg-blue-800 text-white" />
+          <Pill text="NIGHT" color="bg-blue-800 text-white" val />
         )}
       </TableCell>
       <TableCell>{item.workLocation}</TableCell>
@@ -381,11 +418,20 @@ const AttendanceRow = ({ item, openMap, onEdit }: any) => {
   );
 };
 
-// --- HELPERS (Pills, Controls etc - same as before) ---
-const Pill = ({ text, color }: { text: string; color: string }) => (
+// --- HELPERS (Pills, Controls etc) ---
+const Pill = ({
+  text,
+  color,
+  val,
+}: {
+  text: string;
+  color: string;
+  val?: boolean;
+}) => (
   <span
-    className={`px-3 py-1 rounded-full text-xs font-medium text-center flex items-center justify-center w-fit mx-auto ${color}`}
+    className={`px-3 py-1 rounded-full text-xs font-medium text-center flex items-center justify-center w-fit mx-auto gap-1 ${color}`}
   >
+    <ClockFading size={14} className={`${val && "hidden"}`} />
     {text}
   </span>
 );
@@ -404,84 +450,196 @@ const LocationPill = ({ date, lat, lng, openMap }: any) => {
   );
 };
 
-const ExportControls = ({
+const ControlNavbar = ({
   month,
   year,
   setMonth,
   setYear,
   onExport,
   isExporting,
-}: any) => (
-  <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
-    <div className="flex items-center gap-2">
-      <FileText className="text-neutral-400" />
-      <span className="font-semibold text-sm text-neutral-200">
-        Export Monthly Report
-      </span>
-    </div>
-    <div className="flex gap-3">
-      <select
-        value={month}
-        onChange={(e) => setMonth(Number(e.target.value))}
-        className="bg-black border border-neutral-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-neutral-500"
-      >
-        {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-          <option key={m} value={m}>
-            {new Date(0, m - 1).toLocaleString("default", { month: "long" })}
-          </option>
-        ))}
-      </select>
-      <select
-        value={year}
-        onChange={(e) => setYear(Number(e.target.value))}
-        className="bg-black border border-neutral-700 text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-neutral-500"
-      >
-        {[2024, 2025, 2026].map((y) => (
-          <option key={y} value={y}>
-            {y}
-          </option>
-        ))}
-      </select>
-      <button
-        onClick={onExport}
-        disabled={isExporting}
-        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {isExporting ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <Download className="w-4 h-4" />
-        )}
-        {isExporting ? "Generating..." : "Download PDF"}
-      </button>
-    </div>
-  </div>
-);
+  onViewRegister,
+  onRefresh,
+  isRefreshing,
+}: any) => {
+  const months = Array.from({ length: 12 }, (_, i) => ({
+    value: (i + 1).toString(),
+    label: new Date(0, i).toLocaleString("default", { month: "long" }),
+  }));
 
-const ActionToolbar = ({ onViewRegister, onRefresh, isRefreshing }: any) => (
-  <div className="flex justify-between items-center mb-6">
-    <button
-      className="px-6 py-2.5 bg-blue-500 rounded-full text-white/90 font-semibold hover:bg-blue-600 transition-all shadow-md hover:shadow-lg"
-      onClick={onViewRegister}
-    >
-      View Register
-    </button>
-    <Link
-      href="/mark-attendance"
-      className="px-6 py-2.5 rounded-full bg-white/20"
-    >
-      Mark Attendance
-    </Link>
-    <button
-      onClick={onRefresh}
-      disabled={isRefreshing}
-      className="flex items-center gap-2 px-4 py-2.5 bg-neutral-800 border border-neutral-700 rounded-full hover:bg-neutral-700 transition-all text-sm font-medium text-neutral-200"
-    >
-      <RefreshCcw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
-      {isRefreshing ? "Reloading..." : "Reload Data"}
-    </button>
-  </div>
-);
+  const currentYear = new Date().getFullYear();
+  const years = [currentYear - 1, currentYear, currentYear + 1].map(String);
+
+  return (
+    <div className="flex justify-between items-center bg-neutral-900 border border-neutral-800 p-2 rounded-full shadow-lg mb-8 w-full">
+      {/* LEFT SIDE: Actions */}
+      <div className="flex items-center gap-2">
+        {/* DESKTOP: Icon-only actions */}
+        <div className="hidden sm:flex items-center gap-2 pl-2">
+          <Button
+            onClick={onViewRegister}
+            variant="ghost"
+            size="icon"
+            className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
+            title="View Register"
+          >
+            <ClipboardList className="w-5 h-5" />
+          </Button>
+
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
+            title="Mark Attendance"
+          >
+            <Link href="/mark-attendance">
+              <UserCheck className="w-5 h-5" />
+            </Link>
+          </Button>
+
+          <Button
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            variant="ghost"
+            size="icon"
+            className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
+            title="Reload Data"
+          >
+            <RefreshCcw
+              className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+          </Button>
+        </div>
+
+        {/* MOBILE: Hamburger Menu */}
+        <div className="sm:hidden pl-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full text-neutral-300 hover:bg-neutral-800"
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className="bg-neutral-900 border-neutral-800 text-white rounded-xl"
+            >
+              <DropdownMenuItem
+                onClick={onViewRegister}
+                className="cursor-pointer hover:bg-neutral-800"
+              >
+                <ClipboardList className="w-4 h-4 mr-2" /> View Register
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                asChild
+                className="cursor-pointer hover:bg-neutral-800"
+              >
+                <Link href="/mark-attendance">
+                  <UserCheck className="w-4 h-4 mr-2" /> Mark Attendance
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={onRefresh}
+                disabled={isRefreshing}
+                className="cursor-pointer hover:bg-neutral-800"
+              >
+                <RefreshCcw
+                  className={`w-4 h-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+                />{" "}
+                Reload Data
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* RIGHT SIDE: Export Popup (Dialog) */}
+      <div className="pr-1">
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button
+              variant="secondary"
+              className="rounded-full bg-blue-600 hover:bg-blue-700 text-white"
+              title="Export Report"
+            >
+              <Download className="w-5 h-5" />
+              Monthly Report
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-neutral-900 border-neutral-800 text-white sm:max-w-[400px] rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>Export Monthly Report</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-6 py-4">
+              <div className="flex flex-col gap-3">
+                <Label className="text-neutral-400">Select Month</Label>
+                <Select
+                  value={month.toString()}
+                  onValueChange={(v) => setMonth(Number(v))}
+                >
+                  <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
+                    <SelectValue placeholder="Month" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
+                    {months.map((m) => (
+                      <SelectItem
+                        key={m.value}
+                        value={m.value}
+                        className="focus:bg-neutral-800 focus:text-white cursor-pointer"
+                      >
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <Label className="text-neutral-400">Select Year</Label>
+                <Select
+                  value={year.toString()}
+                  onValueChange={(v) => setYear(Number(v))}
+                >
+                  <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
+                    <SelectValue placeholder="Year" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
+                    {years.map((y) => (
+                      <SelectItem
+                        key={y}
+                        value={y}
+                        className="focus:bg-neutral-800 focus:text-white cursor-pointer"
+                      >
+                        {y}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={onExport}
+                disabled={isExporting}
+                className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+              >
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 mr-2" />
+                )}
+                {isExporting ? "Generating PDF..." : "Download PDF"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+};
 
 const PaginationControls = ({ page, totalPages, onPageChange }: any) => (
   <div className="flex justify-center gap-4 mt-6 items-center">
