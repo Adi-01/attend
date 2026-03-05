@@ -21,13 +21,14 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { WORK_LOCATIONS, WorkLocation } from "@/constants/location";
 
 interface Props {
   username: string;
   shift: any;
   isLoading: boolean;
   isProcessing: boolean;
-  onCheckIn: (loc: "GHCL" | "kajli") => void;
+  onCheckIn: (loc: WorkLocation) => void;
   onCheckOut: () => void;
 }
 
@@ -39,18 +40,14 @@ export default function AttendanceStatusCard({
   onCheckIn,
   onCheckOut,
 }: Props) {
-  // State for the 2-step selection flow
-  const [selectedLocation, setSelectedLocation] = useState<
-    "GHCL" | "kajli" | null
-  >(null);
+  const [selectedLocation, setSelectedLocation] = useState<WorkLocation | null>(
+    null,
+  );
 
-  // State for the confirmation modal
   const [modalConfig, setModalConfig] = useState<{
     isOpen: boolean;
     type: "check-in" | "check-out";
   }>({ isOpen: false, type: "check-in" });
-
-  // --- Handlers ---
 
   const handleTriggerCheckIn = () => {
     if (selectedLocation) {
@@ -68,9 +65,6 @@ export default function AttendanceStatusCard({
     } else if (modalConfig.type === "check-out") {
       onCheckOut();
     }
-    // Note: We don't close the modal immediately here;
-    // we wait for the parent's `isProcessing` to finish or let the UI update handle it.
-    // However, for UX, usually we close it and let the button show the loading spinner.
     setModalConfig((prev) => ({ ...prev, isOpen: false }));
   };
 
@@ -109,40 +103,47 @@ export default function AttendanceStatusCard({
                 <Skeleton className="h-4 w-3/4 bg-zinc-800" />
               </div>
             ) : shift ? (
-              // STATE 3: ACTIVE SHIFT (Show Info)
-              <div className="flex items-center gap-2 text-sm text-green-400 bg-green-900/20 p-3 rounded-2xl border border-green-900/50 ">
-                <Briefcase size={16} />
-                <span>
-                  You are currently checked in at{" "}
-                  <strong>{shift.workLocation}</strong>.
+              // STATE 3: ACTIVE SHIFT
+              <div className="flex items-center gap-3 text-sm text-green-400 bg-green-900/20 p-3.5 rounded-2xl border border-green-900/50">
+                <Briefcase size={18} className="shrink-0" />
+                <span className="leading-relaxed">
+                  Have a great shift! You are currently checked in at{" "}
+                  <strong className="text-green-300">
+                    {shift.workLocation}
+                  </strong>
+                  .
                 </span>
               </div>
             ) : selectedLocation ? (
-              // STATE 2: SELECTION MADE (Show Confirmation Preview)
+              // STATE 2: SELECTION MADE
               <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex items-center justify-between text-sm text-indigo-300 bg-indigo-900/20 p-3 rounded-2xl border border-indigo-900/50">
                   <div className="flex items-center gap-2">
                     <MapPin size={16} className="text-indigo-400" />
                     <span>
-                      Selected: <strong>{selectedLocation}</strong>
+                      Selected:{" "}
+                      <strong className="text-indigo-200">
+                        {selectedLocation.charAt(0).toUpperCase() +
+                          selectedLocation.slice(1)}
+                      </strong>
                     </span>
                   </div>
                   <button
                     onClick={() => setSelectedLocation(null)}
                     disabled={isProcessing}
-                    className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-200 transition-colors"
+                    className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-200 transition-colors bg-indigo-900/40 px-2 py-1 rounded-md"
                   >
                     <RotateCcw size={12} /> Change
                   </button>
                 </div>
-                <p className="text-xs text-zinc-500 px-1">
-                  Review your location selection above before checking in.
+                <p className="text-xs text-zinc-400 px-1 text-center">
+                  Location secured. Ready to start your day?
                 </p>
               </div>
             ) : (
-              // STATE 1: NO SELECTION (Prompt User)
-              <p className="text-zinc-400 text-sm text-center">
-                Please select your work location to start your shift.
+              // STATE 1: NO SELECTION
+              <p className="text-zinc-400 text-sm text-center font-medium">
+                Where are you working today? Select a location below.
               </p>
             )}
           </div>
@@ -169,7 +170,7 @@ export default function AttendanceStatusCard({
                 </>
               ) : (
                 <>
-                  <LogOut className="mr-2 h-4 w-4" /> End Shift
+                  <LogOut className="mr-2 h-4 w-4" /> Check Out
                 </>
               )}
             </Button>
@@ -187,33 +188,27 @@ export default function AttendanceStatusCard({
                 </>
               ) : (
                 <>
-                  Check In Now <ArrowRight className="ml-2 h-4 w-4" />
+                  Check In <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}
             </Button>
           ) : (
             // BUTTONS: SELECT LOCATION
             <div className="flex flex-row items-center justify-center gap-2">
-              <Button
-                onClick={() => setSelectedLocation("GHCL")}
-                disabled={isProcessing}
-                className="rounded-2xl"
-              >
-                <span className="flex items-center">
-                  <MapPin className="mr-2 h-4 w-4" /> GHCL
-                </span>
-                <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </Button>
-              <Button
-                onClick={() => setSelectedLocation("kajli")}
-                disabled={isProcessing}
-                className="rounded-2xl"
-              >
-                <span className="flex items-center">
-                  <MapPin className="mr-2 h-4 w-4" /> Kajli
-                </span>
-                <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </Button>
+              {WORK_LOCATIONS.map((location) => (
+                <Button
+                  key={location}
+                  onClick={() => setSelectedLocation(location)}
+                  disabled={isProcessing}
+                  className="rounded-2xl group"
+                >
+                  <span className="flex items-center">
+                    <MapPin className="mr-2 h-4 w-4" />
+                    {location.charAt(0).toUpperCase() + location.slice(1)}
+                  </span>
+                  <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </Button>
+              ))}
             </div>
           )}
         </CardFooter>
@@ -224,17 +219,15 @@ export default function AttendanceStatusCard({
         isOpen={modalConfig.isOpen}
         onClose={() => setModalConfig((prev) => ({ ...prev, isOpen: false }))}
         onConfirm={handleConfirmAction}
-        isLoading={isProcessing} // Keep modal valid while processing if desired
-        title={
-          modalConfig.type === "check-in" ? "Confirm Check In" : "End Shift"
-        }
+        isLoading={isProcessing}
+        title={modalConfig.type === "check-in" ? "Start Shift" : "End Shift"}
         description={
           modalConfig.type === "check-in"
-            ? `Are you sure you want to mark your attendance at ${selectedLocation}? This will record your current time and location.`
-            : "Are you sure you want to end your shift? This will mark your check-out time."
+            ? `You are about to check in at ${selectedLocation ? selectedLocation.charAt(0).toUpperCase() + selectedLocation.slice(1) : ""}. Your exact time and coordinates will be recorded.`
+            : "Ready to wrap up for the day? This will check you out and finalize your shift."
         }
         confirmText={
-          modalConfig.type === "check-in" ? "Yes, Check In" : "Yes, End Shift"
+          modalConfig.type === "check-in" ? "Yes, Check In" : "Yes, Check Out"
         }
         variant={modalConfig.type === "check-in" ? "default" : "destructive"}
       />

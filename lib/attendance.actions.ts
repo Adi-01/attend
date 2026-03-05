@@ -43,7 +43,7 @@ export async function getMonthlyAttendanceData(month: number, year: number) {
     const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
     const endDate = `${year}-${String(month).padStart(
       2,
-      "0"
+      "0",
     )}-${lastDay}T23:59:59.999`;
 
     const res = await tables.listRows({
@@ -51,44 +51,51 @@ export async function getMonthlyAttendanceData(month: number, year: number) {
       tableId: appwriteConfig.attendanceCollectionId,
       queries: [
         Query.between("checkInAt", startDate, endDate),
-        Query.orderAsc("checkInAt"),
+        Query.orderAsc("checkInAt"), // Ordered oldest to newest
         Query.limit(5000),
       ],
     });
 
-    // Updated Types
+    // Updated Types - Key is now userId (string)
     const userMap: Record<
       string,
       {
         userName: string;
-        // removed top-level workLocation as it varies
         days: Record<
           string,
           {
             count: number;
             working: boolean;
-            locations: string[]; // Track all locations for completed shifts
-            workingLocation?: string; // Track location for active shift
+            locations: string[];
+            workingLocation?: string;
           }
         >;
       }
     > = {};
 
     res.rows.forEach((row: any) => {
-      // 1. Initialize User
-      if (!userMap[row.userName]) {
-        userMap[row.userName] = {
+      const userId = row.userId; // 👈 1. Use userId as the unique identifier
+
+      if (!userId) return; // Safeguard against bad data
+
+      // 2. Initialize User using userId
+      if (!userMap[userId]) {
+        userMap[userId] = {
           userName: row.userName,
           days: {},
         };
+      } else {
+        // 3. Update the name to the latest one.
+        // Since we query orderAsc, the last row processed has the most recent name.
+        userMap[userId].userName = row.userName;
       }
 
       const dateOnly = row.checkInAt?.split("T")[0];
       const location = row.workLocation || "N/A";
 
       if (dateOnly) {
-        // 2. Initialize Day
-        const dayData = userMap[row.userName].days[dateOnly] || {
+        // 4. Initialize Day
+        const dayData = userMap[userId].days[dateOnly] || {
           count: 0,
           working: false,
           locations: [],
@@ -98,14 +105,14 @@ export async function getMonthlyAttendanceData(month: number, year: number) {
         if (row.checkOutAt) {
           // Completed Shift
           dayData.count += 1;
-          dayData.locations.push(location); // Store location
+          dayData.locations.push(location);
         } else {
           // Active Shift
           dayData.working = true;
-          dayData.workingLocation = location; // Store active location
+          dayData.workingLocation = location;
         }
 
-        userMap[row.userName].days[dateOnly] = dayData;
+        userMap[userId].days[dateOnly] = dayData; // 👈 Use userId here too
       }
     });
 
@@ -114,7 +121,7 @@ export async function getMonthlyAttendanceData(month: number, year: number) {
     Object.values(userMap).forEach((u) => {
       for (let d = 1; d <= daysInMonth; d++) {
         const dateKey = `${year}-${String(month).padStart(2, "0")}-${String(
-          d
+          d,
         ).padStart(2, "0")}`;
 
         if (!u.days[dateKey]) {
@@ -122,7 +129,7 @@ export async function getMonthlyAttendanceData(month: number, year: number) {
         }
       }
     });
-
+    // console.log(Object.values(userMap));
     return {
       success: true,
       attendanceData: Object.values(userMap),
@@ -147,7 +154,7 @@ export async function getMonthlyExportData(month: number, year: number) {
     // Include the entire last day
     const endDate = `${year}-${String(month).padStart(
       2,
-      "0"
+      "0",
     )}-${lastDay}T23:59:59.999`;
 
     const res = await tables.listRows({
@@ -170,7 +177,7 @@ export async function getMonthlyExportData(month: number, year: number) {
 export async function updateAttendanceTime(
   rowId: string,
   field: "checkIn" | "checkOut",
-  newValue: string
+  newValue: string,
 ) {
   try {
     const { tables } = await createAdminClient();
@@ -185,7 +192,7 @@ export async function updateAttendanceTime(
       rowId,
       {
         [dbColumn]: newValue,
-      }
+      },
     );
 
     // 3. Optional: Revalidate the cache so the page updates immediately

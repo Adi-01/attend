@@ -33,7 +33,9 @@ export function proxy(request: NextRequest) {
 
   // 🔒 Admin-only routes (non-admins blocked)
   if (
-    (pathname.startsWith("/attendance") || pathname.startsWith("/register")) &&
+    (pathname.startsWith("/attendance") ||
+      pathname.startsWith("/register") ||
+      pathname.startsWith("/users")) &&
     label !== "admin"
   ) {
     return NextResponse.redirect(new URL("/mark-attendance", request.url));
@@ -50,5 +52,6 @@ export const config = {
     "/register",
     "/mark-attendance",
     "/my-attendance",
+    "/users",
   ],
 };

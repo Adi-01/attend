@@ -9,6 +9,7 @@ import {
   useCheckInMutation,
   useCheckOutMutation,
 } from "@/lib/actions/employee.attendance.mutations";
+import { WorkLocation } from "@/constants/location";
 
 export function useAttendance() {
   // 1. Queries with Initial Data
@@ -59,7 +60,7 @@ export function useAttendance() {
   }, []);
 
   // 4. Actions (FIXED TYPE MAPPING HERE)
-  const checkIn = async (workLocation: "GHCL" | "kajli") => {
+  const checkIn = async (workLocation: WorkLocation) => {
     try {
       const loc = await getLocation();
 

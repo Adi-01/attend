@@ -41,6 +41,7 @@ import {
   UserCheck,
   Menu,
   ClockFading,
+  User,
 } from "lucide-react";
 import {
   Select,
@@ -508,6 +509,17 @@ const ControlNavbar = ({
             <RefreshCcw
               className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`}
             />
+          </Button>
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
+            title="View Users"
+          >
+            <Link href="/users">
+              <User className="w-5 h-5" />
+            </Link>
           </Button>
         </div>
 

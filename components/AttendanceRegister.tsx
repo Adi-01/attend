@@ -13,6 +13,7 @@ import {
   X,
   Check,
   CheckCheck,
+  User,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -50,6 +51,7 @@ import { Button } from "@/components/ui/button";
 import { getMonthlyAttendanceData } from "@/lib/attendance.actions";
 import { useRouter } from "next/navigation";
 import { Separator } from "./ui/separator";
+import Link from "next/link";
 
 // Updated Types matching Backend
 type DayStatus = {
@@ -314,6 +316,17 @@ export default function AttendanceRegister({
               <RefreshCcw
                 className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`}
               />
+            </Button>
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
+              title="View Users"
+            >
+              <Link href="/users">
+                <User className="w-5 h-5" />
+              </Link>
             </Button>
           </div>
 

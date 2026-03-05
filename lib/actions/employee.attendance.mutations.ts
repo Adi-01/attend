@@ -1,6 +1,7 @@
 "use client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { markCheckIn, markCheckOut } from "./employee.attendance.actions";
+import { WorkLocation } from "@/constants/location";
 
 export function useCheckInMutation() {
   const queryClient = useQueryClient();
@@ -13,7 +14,7 @@ export function useCheckInMutation() {
     }: {
       latitude: number;
       longitude: number;
-      workLocation: "GHCL" | "kajli";
+      workLocation: WorkLocation;
     }) => markCheckIn(latitude, longitude, workLocation),
 
     onSuccess: async () => {

@@ -2,6 +2,7 @@
 import { appwriteConfig } from "@/lib/appwrite/config";
 import { ID, Query } from "node-appwrite";
 import { createAdminClient, createSessionClient } from "../appwrite";
+import { WorkLocation } from "@/constants/location";
 
 const ATTENDANCE_DB = appwriteConfig.databaseId!;
 const ATTENDANCE_TABLE = appwriteConfig.attendanceCollectionId!;
@@ -79,7 +80,7 @@ export async function getCurrentShift() {
 export async function markCheckIn(
   latitude: number,
   longitude: number,
-  workLocation: "GHCL" | "kajli",
+  workLocation: WorkLocation,
 ) {
   try {
     const userId = await currentUser();
