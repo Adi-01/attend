@@ -368,6 +368,12 @@ export default function AttendanceRegister({
                   />{" "}
                   Reload Data
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => router.push("/users")}
+                  className="cursor-pointer hover:bg-neutral-800"
+                >
+                  <User className="w-4 h-4 mr-2" /> View Users
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

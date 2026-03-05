@@ -563,6 +563,14 @@ const ControlNavbar = ({
                 />{" "}
                 Reload Data
               </DropdownMenuItem>
+              <DropdownMenuItem
+                asChild
+                className="cursor-pointer hover:bg-neutral-800"
+              >
+                <Link href="/users">
+                  <User className="w-4 h-4 mr-2" /> View Users
+                </Link>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
