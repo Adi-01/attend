@@ -45,17 +45,16 @@ export default function LiveMap({
   radius,
 }: LiveMapProps) {
   return (
-    <div className="h-48 w-full rounded-xl overflow-hidden border border-neutral-700 shadow-inner z-0 relative">
+    <div className="h-58 w-full rounded-xl overflow-hidden border border-neutral-700 shadow-inner z-0 relative">
       <MapContainer
         center={[userLat, userLng]}
         zoom={15}
         scrollWheelZoom={false}
-        // Added styling to the MapContainer to invert the map colors
-        className="h-full w-full [&_.leaflet-tile-pane]:filter [&_.leaflet-tile-pane]:invert [&_.leaflet-tile-pane]:hue-rotate-180 [&_.leaflet-tile-pane]:brightness-90 [&_.leaflet-tile-pane]:contrast-75"
+        className="h-full w-full"
       >
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+          attribution="Tiles &copy; Esri"
         />
 
         <MapUpdater center={[userLat, userLng]} />

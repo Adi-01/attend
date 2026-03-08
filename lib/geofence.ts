@@ -7,7 +7,11 @@ export const SITE_COORDINATES = {
   Nagaur: { lat: 27.2904094, lng: 73.8477851 },
 };
 
-export const MAX_ALLOWED_DISTANCE_METERS = 200;
+export const MAX_ALLOWED_DISTANCE_METERS: Record<string, number> = {
+  GHCL: 100,
+  kajli: 200,
+  Nagaur: 200,
+};
 
 // The Haversine formula to calculate distance between two lat/lng points in meters
 export function getDistanceInMeters(
