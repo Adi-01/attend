@@ -2,7 +2,7 @@
 
 // Replace these with the actual latitudes and longitudes of your sites
 export const SITE_COORDINATES = {
-  GHCL: { lat: 20.848214, lng: 70.468189 },
+  GHCL: { lat: 20.84872, lng: 70.465691 },
   kajli: { lat: 20.894496, lng: 70.418492 },
   Nagaur: { lat: 27.2904094, lng: 73.8477851 },
 };

@@ -50,12 +50,12 @@ export default function LiveMap({
         center={[userLat, userLng]}
         zoom={15}
         scrollWheelZoom={false}
-        className="h-full w-full"
+        // Added styling to the MapContainer to invert the map colors
+        className="h-full w-full [&_.leaflet-tile-pane]:filter [&_.leaflet-tile-pane]:invert [&_.leaflet-tile-pane]:hue-rotate-180 [&_.leaflet-tile-pane]:brightness-90 [&_.leaflet-tile-pane]:contrast-75"
       >
-        {/* Dark Mode Map Tiles */}
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         />
 
         <MapUpdater center={[userLat, userLng]} />
@@ -68,7 +68,7 @@ export default function LiveMap({
           pathOptions={{
             color: "#22c55e",
             fillColor: "#22c55e",
-            fillOpacity: 0.1,
+            fillOpacity: 0.15,
           }}
         />
 
