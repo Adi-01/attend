@@ -1,5 +1,6 @@
 "use server";
 
+import { WorkLocation } from "@/constants/location";
 import { createAdminClient } from "@/lib/appwrite";
 import { appwriteConfig } from "@/lib/appwrite/config";
 import { revalidatePath } from "next/cache";
@@ -18,6 +19,7 @@ export async function getAttendanceData(page = 1, limit = 10) {
         Query.orderDesc("$createdAt"),
         Query.limit(limit),
         Query.offset(offset),
+        Query.notEqual("workLocation", "Nagaur"),
       ],
     });
 
@@ -144,7 +146,11 @@ export async function getMonthlyAttendanceData(month: number, year: number) {
   }
 }
 
-export async function getMonthlyExportData(month: number, year: number) {
+export async function getMonthlyExportData(
+  month: number,
+  year: number,
+  location: WorkLocation,
+) {
   try {
     const { tables } = await createAdminClient();
 
@@ -163,6 +169,7 @@ export async function getMonthlyExportData(month: number, year: number) {
       queries: [
         Query.between("checkInAt", startDate, endDate),
         Query.orderAsc("checkInAt"), // Ordered by date for the PDF
+        Query.equal("workLocation", location),
         Query.limit(5000), // High limit to fetch all records for the month
       ],
     });
@@ -207,6 +214,37 @@ export async function updateAttendanceTime(
     return {
       success: false,
       error: error?.message || "Failed to update attendance record",
+    };
+  }
+}
+
+export async function getNagaurAttendanceData(page = 1, limit = 10) {
+  try {
+    const { tables } = await createAdminClient();
+
+    const offset = (page - 1) * limit;
+
+    const res = await tables.listRows({
+      databaseId: appwriteConfig.databaseId,
+      tableId: appwriteConfig.attendanceCollectionId,
+      queries: [
+        Query.orderDesc("$createdAt"),
+        Query.limit(limit),
+        Query.offset(offset),
+        Query.equal("workLocation", "Nagaur"),
+      ],
+    });
+
+    return {
+      success: true,
+      attendanceData: res.rows,
+      total: res.total, // IMPORTANT: Appwrite returns total rows
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      attendanceData: [],
+      error: error?.message || "Something went wrong",
     };
   }
 }

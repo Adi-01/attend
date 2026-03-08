@@ -2,18 +2,13 @@
 
 import { useState, useMemo } from "react";
 import {
-  RefreshCcw,
   Download,
   Filter,
-  Menu,
-  ClipboardList,
-  UserCheck,
-  FileText,
   ClockFading,
   X,
   Check,
   CheckCheck,
-  User,
+  Loader2,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -26,12 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -49,9 +38,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { getMonthlyAttendanceData } from "@/lib/attendance.actions";
-import { useRouter } from "next/navigation";
 import { Separator } from "./ui/separator";
-import Link from "next/link";
 
 // Updated Types matching Backend
 type DayStatus = {
@@ -83,7 +70,7 @@ export default function AttendanceRegister({
   const [year, setYear] = useState(initialYear);
   const [isLoading, setIsLoading] = useState(false);
   const [locationFilter, setLocationFilter] = useState<string>("All");
-  const router = useRouter();
+  const [isExporting, setIsExporting] = useState(false);
 
   const daysInMonth = new Date(year, month, 0).getDate();
 
@@ -92,9 +79,7 @@ export default function AttendanceRegister({
     const locSet = new Set<string>();
     attendanceData.forEach((user) => {
       Object.values(user.days).forEach((day) => {
-        // Add completed locations
         day.locations?.forEach((loc) => locSet.add(loc));
-        // Add active location
         if (day.workingLocation) locSet.add(day.workingLocation);
       });
     });
@@ -105,7 +90,6 @@ export default function AttendanceRegister({
   const filteredData = useMemo(() => {
     if (locationFilter === "All") return attendanceData;
 
-    // Filter Users AND Recalculate their daily counts based on location
     return attendanceData
       .map((user) => {
         const newUser = { ...user, days: { ...user.days } };
@@ -114,27 +98,23 @@ export default function AttendanceRegister({
         Object.keys(newUser.days).forEach((dateKey) => {
           const originalDay = newUser.days[dateKey];
 
-          // Filter completed shifts for this location
           const matchingCompleted = originalDay.locations.filter(
             (loc) => loc === locationFilter,
           ).length;
 
-          // Check if active shift matches location
           const matchesWorking = originalDay.workingLocation === locationFilter;
 
           if (matchingCompleted > 0 || matchesWorking) {
             hasDataForLocation = true;
           }
 
-          // Overwrite the day data for the View to only reflect this filter
           newUser.days[dateKey] = {
             ...originalDay,
-            count: matchingCompleted, // Only count shifts at this location
-            working: matchesWorking, // Only show W if working at this location
+            count: matchingCompleted,
+            working: matchesWorking,
           };
         });
 
-        // Only return user if they have at least one record for this location
         return hasDataForLocation ? newUser : null;
       })
       .filter((u): u is UserMonthly => u !== null);
@@ -153,6 +133,7 @@ export default function AttendanceRegister({
 
   // --- PDF GENERATION ---
   const generatePDF = () => {
+    setIsExporting(true);
     const doc = new jsPDF({ orientation: "landscape" });
 
     doc.setFillColor(23, 23, 23);
@@ -264,6 +245,7 @@ export default function AttendanceRegister({
     });
 
     doc.save(`Attendance_${locationFilter}_${month}_${year}.pdf`);
+    setIsExporting(false);
   };
 
   const fetchData = async (m: number, y: number) => {
@@ -275,227 +257,22 @@ export default function AttendanceRegister({
     setIsLoading(false);
   };
 
-  const handleRefresh = () => fetchData(month, year);
-  const currentYear = new Date().getFullYear();
-  const years = [currentYear - 1, currentYear, currentYear + 1].map(String);
+  const currentYearOptions = new Date().getFullYear();
+  const years = [
+    currentYearOptions - 1,
+    currentYearOptions,
+    currentYearOptions + 1,
+  ].map(String);
+  const months = Array.from({ length: 12 }, (_, i) => ({
+    value: (i + 1).toString(),
+    label: new Date(0, i).toLocaleString("default", { month: "long" }),
+  }));
 
   return (
     <div className="mx-6 md:mx-14 text-white my-8">
-      {/* 1. Unified Control Navbar */}
-      <div className="flex justify-between items-center bg-neutral-900 border border-neutral-800 p-2 rounded-full shadow-lg mb-8 w-full">
-        {/* LEFT SIDE: Actions & Filters */}
-        <div className="flex items-center gap-2 pl-2">
-          {/* DESKTOP: Icon-only actions */}
-          <div className="hidden sm:flex items-center gap-2">
-            <Button
-              onClick={() => router.push("/attendance")}
-              variant="ghost"
-              size="icon"
-              className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
-              title="View Daily Logs"
-            >
-              <FileText className="w-5 h-5" />
-            </Button>
-            <Button
-              onClick={() => router.push("/mark-attendance")}
-              variant="ghost"
-              size="icon"
-              className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
-              title="Mark Attendance"
-            >
-              <UserCheck className="w-5 h-5" />
-            </Button>
-            <Button
-              onClick={handleRefresh}
-              disabled={isLoading}
-              variant="ghost"
-              size="icon"
-              className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
-              title="Reload Data"
-            >
-              <RefreshCcw
-                className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`}
-              />
-            </Button>
-            <Button
-              asChild
-              variant="ghost"
-              size="icon"
-              className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
-              title="View Users"
-            >
-              <Link href="/users">
-                <User className="w-5 h-5" />
-              </Link>
-            </Button>
-          </div>
-
-          {/* MOBILE: Hamburger Menu */}
-          <div className="sm:hidden">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full text-neutral-300 hover:bg-neutral-800"
-                >
-                  <Menu className="w-5 h-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="bg-neutral-900 border-neutral-800 text-white rounded-xl"
-              >
-                <DropdownMenuItem
-                  onClick={() => router.push("/attendance")}
-                  className="cursor-pointer hover:bg-neutral-800"
-                >
-                  <FileText className="w-4 h-4 mr-2" /> View Daily Logs
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => router.push("/mark-attendance")}
-                  className="cursor-pointer hover:bg-neutral-800"
-                >
-                  <UserCheck className="w-4 h-4 mr-2" /> Mark Attendance
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleRefresh}
-                  disabled={isLoading}
-                  className="cursor-pointer hover:bg-neutral-800"
-                >
-                  <RefreshCcw
-                    className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
-                  />{" "}
-                  Reload Data
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => router.push("/users")}
-                  className="cursor-pointer hover:bg-neutral-800"
-                >
-                  <User className="w-4 h-4 mr-2" /> View Users
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* FILTER POPUP (Desktop & Mobile) */}
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white relative"
-                title="Filters"
-              >
-                <Filter className="w-5 h-5" />
-                {locationFilter !== "All" && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>
-                )}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-neutral-900 border-neutral-800 text-white sm:max-w-[400px] rounded-2xl">
-              <DialogHeader>
-                <DialogTitle>Filter Register</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-6 py-4">
-                <div className="flex flex-col gap-3">
-                  <Label className="text-neutral-400">Select Month</Label>
-                  <Select
-                    value={month.toString()}
-                    onValueChange={(v) => {
-                      const m = Number(v);
-                      setMonth(m);
-                      fetchData(m, year);
-                    }}
-                  >
-                    <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
-                      <SelectValue placeholder="Month" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                        <SelectItem
-                          key={m}
-                          value={m.toString()}
-                          className="focus:bg-neutral-800 focus:text-white cursor-pointer"
-                        >
-                          {new Date(0, m - 1).toLocaleString("en-US", {
-                            month: "long",
-                          })}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <Label className="text-neutral-400">Select Year</Label>
-                  <Select
-                    value={year.toString()}
-                    onValueChange={(v) => {
-                      const y = Number(v);
-                      setYear(y);
-                      fetchData(month, y);
-                    }}
-                  >
-                    <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
-                      <SelectValue placeholder="Year" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
-                      {years.map((y) => (
-                        <SelectItem
-                          key={y}
-                          value={y.toString()}
-                          className="focus:bg-neutral-800 focus:text-white cursor-pointer"
-                        >
-                          {y}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <Label className="text-neutral-400">Select Location</Label>
-                  <Select
-                    value={locationFilter}
-                    onValueChange={setLocationFilter}
-                  >
-                    <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
-                      <SelectValue placeholder="Location" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
-                      {uniqueLocations.map((loc) => (
-                        <SelectItem
-                          key={loc}
-                          value={loc}
-                          className="focus:bg-neutral-800 focus:text-white cursor-pointer"
-                        >
-                          {loc}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {/* RIGHT SIDE: Export Button */}
-        <div className="pr-1">
-          <Button
-            onClick={generatePDF}
-            variant="secondary"
-            className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5"
-          >
-            <Download className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Export PDF</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* 2. Header & Legend beneath Navbar */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+      {/* HEADER, LEGEND & ACTIONS */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
+        {/* Title */}
         <div className="flex items-baseline gap-3">
           <h1 className="text-2xl font-semibold">Attendance Register</h1>
           {locationFilter !== "All" && (
@@ -505,31 +282,165 @@ export default function AttendanceRegister({
           )}
         </div>
 
-        <div className="flex gap-4 text-sm font-medium bg-neutral-900 p-2 px-4 rounded-full border border-neutral-800 mt-4 md:mt-0 shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-green-400 flex flex-row items-center justify-center">
-              <Check className="w-4 h-4 -mb-0.5 mr-1" /> = Present
-            </span>
-            <Separator orientation="vertical" className="bg-neutral-600" />
+        {/* Controls Wrapper */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full xl:w-auto">
+          {/* Legend */}
+          <div className="flex gap-3 text-sm font-medium bg-neutral-900 p-2 px-4 rounded-full border border-neutral-800 shadow-sm w-full sm:w-auto justify-center">
+            <div className="flex items-center gap-2">
+              <span className="text-green-400 flex flex-row items-center justify-center">
+                <Check className="w-4 h-4 -mb-0.5 mr-1" /> = Present
+              </span>
+              <Separator
+                orientation="vertical"
+                className="bg-neutral-600 h-4 hidden sm:block"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-red-400 flex flex-row items-center justify-center">
+                <X className="w-4 h-4 -mb-0.5 mr-1" /> = Absent
+              </span>
+              <Separator
+                orientation="vertical"
+                className="bg-neutral-600 h-4 hidden sm:block"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-yellow-400 flex flex-row items-center justify-center">
+                <ClockFading className="w-4 h-4 -mb-0.5 mr-1" /> = Working
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-red-400 flex flex-row items-center justify-center">
-              <X className="w-4 h-4 -mb-0.5 mr-1" /> = Absent
-            </span>
-            <Separator orientation="vertical" className="bg-neutral-600" />
-          </div>
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            {/* Filter Dialog */}
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="rounded-full bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:text-white relative"
+                  title="Filters"
+                >
+                  <Filter className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Filter</span>
+                  {locationFilter !== "All" && (
+                    <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-neutral-900"></span>
+                  )}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-neutral-900 border-neutral-800 text-white sm:max-w-[400px] rounded-2xl">
+                <DialogHeader>
+                  <DialogTitle>Filter Register</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-6 py-4">
+                  <div className="flex flex-col gap-3">
+                    <Label className="text-neutral-400">Select Month</Label>
+                    <Select
+                      value={month.toString()}
+                      onValueChange={(v) => {
+                        const m = Number(v);
+                        setMonth(m);
+                        fetchData(m, year);
+                      }}
+                    >
+                      <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
+                        <SelectValue placeholder="Month" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
+                        {months.map((m) => (
+                          <SelectItem
+                            key={m.value}
+                            value={m.value}
+                            className="focus:bg-neutral-800 focus:text-white cursor-pointer"
+                          >
+                            {m.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-yellow-400 flex flex-row items-center justify-center">
-              <ClockFading className="w-4 h-4 -mb-0.5 mr-1" /> = Working
-            </span>
+                  <div className="flex flex-col gap-3">
+                    <Label className="text-neutral-400">Select Year</Label>
+                    <Select
+                      value={year.toString()}
+                      onValueChange={(v) => {
+                        const y = Number(v);
+                        setYear(y);
+                        fetchData(month, y);
+                      }}
+                    >
+                      <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
+                        {years.map((y) => (
+                          <SelectItem
+                            key={y}
+                            value={y}
+                            className="focus:bg-neutral-800 focus:text-white cursor-pointer"
+                          >
+                            {y}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <Label className="text-neutral-400">Select Location</Label>
+                    <Select
+                      value={locationFilter}
+                      onValueChange={setLocationFilter}
+                    >
+                      <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
+                        <SelectValue placeholder="Location" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
+                        {uniqueLocations.map((loc) => (
+                          <SelectItem
+                            key={loc}
+                            value={loc}
+                            className="focus:bg-neutral-800 focus:text-white cursor-pointer"
+                          >
+                            {loc}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Export Button */}
+            <Button
+              onClick={generatePDF}
+              disabled={isExporting}
+              className="rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg px-4 sm:px-5"
+            >
+              {isExporting ? (
+                <Loader2 className="w-4 h-4 sm:mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 sm:mr-2" />
+              )}
+              <span className="hidden sm:inline">
+                {isExporting ? "Exporting..." : "Export PDF"}
+              </span>
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* 3. Data Table */}
-      <div className="overflow-x-auto border border-neutral-800 rounded-lg shadow-xl">
+      {/* DATA TABLE */}
+      <div className="overflow-x-auto border border-neutral-800 rounded-lg shadow-xl relative">
+        {/* Loading Overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm rounded-lg">
+            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+          </div>
+        )}
+
         <Table className="min-w-max bg-black text-white text-sm">
           <TableHeader>
             <TableRow className="bg-neutral-900 border-b border-neutral-800">
@@ -560,7 +471,7 @@ export default function AttendanceRegister({
               return (
                 <TableRow
                   key={user.userName}
-                  className="hover:bg-neutral-800/40 border-b border-neutral-800"
+                  className="hover:bg-neutral-800/40 border-b border-neutral-800 group"
                 >
                   <TableCell className="font-medium border-r border-neutral-800 sticky left-0 bg-black z-10 group-hover:bg-neutral-900 transition-colors">
                     {user.userName}
@@ -579,7 +490,8 @@ export default function AttendanceRegister({
                       let display: React.ReactNode = (
                         <X className="w-4 h-4 mx-auto" />
                       );
-                      let colorClass = "text-neutral-600"; // Dimmed absent color
+                      let colorClass = "text-neutral-600";
+
                       if (working) {
                         display = <ClockFading size={14} className="mx-auto" />;
                         colorClass = "text-yellow-400 font-semibold";
@@ -592,7 +504,7 @@ export default function AttendanceRegister({
                           );
                         colorClass = "text-green-400 font-medium";
                       } else {
-                        colorClass = "text-red-500 font-medium opacity-60"; // A bit subtle for absent
+                        colorClass = "text-red-500 font-medium opacity-60";
                       }
 
                       return (
@@ -635,7 +547,7 @@ export default function AttendanceRegister({
                   colSpan={daysInMonth + 2}
                   className="text-center py-10 text-neutral-500 bg-black"
                 >
-                  No users found for this location.
+                  No users found for this location/month.
                 </TableCell>
               </TableRow>
             )}

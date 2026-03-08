@@ -3,6 +3,7 @@ import { twMerge } from "tailwind-merge";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { getMonthlyExportData } from "@/lib/attendance.actions";
+import { WorkLocation } from "@/constants/location";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -32,8 +33,12 @@ export const getShift = (cin: string | null, cout: string | null) => {
     : "Night Shift";
 };
 
-export const generateAttendancePDF = async (month: number, year: number) => {
-  const res = await getMonthlyExportData(month, year);
+export const generateAttendancePDF = async (
+  month: number,
+  year: number,
+  location: WorkLocation,
+) => {
+  const res = await getMonthlyExportData(month, year, location);
 
   if (!res.success || !res.data || res.data.length === 0) {
     alert("No data found for the selected month.");
@@ -49,7 +54,7 @@ export const generateAttendancePDF = async (month: number, year: number) => {
     0,
     doc.internal.pageSize.width,
     doc.internal.pageSize.height,
-    "F"
+    "F",
   );
 
   // Title
@@ -60,7 +65,7 @@ export const generateAttendancePDF = async (month: number, year: number) => {
       month: "long",
     })} ${year}`,
     14,
-    15
+    15,
   );
 
   const tableBody = res.data.map((item: any) => {
@@ -68,7 +73,7 @@ export const generateAttendancePDF = async (month: number, year: number) => {
     const createLocationCell = (
       dateStr: string | null,
       lat?: number,
-      lng?: number
+      lng?: number,
     ) => {
       const text = dateStr ? formatDate(dateStr) : "Pending";
       return { content: text, lat: lat, lng: lng };

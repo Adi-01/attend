@@ -10,7 +10,7 @@ export async function getUsersList() {
 
     // You can add Query.limit(50) or Query.offset() inside list() for pagination later
     const userList = await users.list({
-      queries: [Query.orderDesc("$createdAt")],
+      queries: [Query.orderDesc("$createdAt"), Query.limit(30)],
     });
 
     return {

@@ -1,4 +1,16 @@
 "use client";
+// 1. Add this dynamic import at the top of AttendanceStatusCard.tsx
+import dynamic from "next/dynamic";
+
+// This tells Next.js to only load the map on the client side
+const LiveMap = dynamic(() => import("@/components/LiveMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-48 w-full bg-neutral-800 rounded-xl flex items-center justify-center border border-neutral-700">
+      <Loader2 className="w-6 h-6 text-neutral-500 animate-spin" />
+    </div>
+  ),
+});
 
 import { useState } from "react";
 import {
@@ -22,14 +34,20 @@ import {
 } from "lucide-react";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { WORK_LOCATIONS, WorkLocation } from "@/constants/location";
+import { useLiveLocation } from "@/hooks/useLiveLocation";
+import {
+  SITE_COORDINATES,
+  getDistanceInMeters,
+  MAX_ALLOWED_DISTANCE_METERS,
+} from "@/lib/geofence";
 
 interface Props {
   username: string;
   shift: any;
   isLoading: boolean;
   isProcessing: boolean;
-  onCheckIn: (loc: WorkLocation) => void;
-  onCheckOut: () => void;
+  onCheckIn: (loc: WorkLocation, lat: number, lng: number) => void;
+  onCheckOut: (lat: number, lng: number) => void;
 }
 
 export default function AttendanceStatusCard({
@@ -49,23 +67,107 @@ export default function AttendanceStatusCard({
     type: "check-in" | "check-out";
   }>({ isOpen: false, type: "check-in" });
 
+  // --- GET LIVE LOCATION ---
+  const { isLocating, locationError, userCoords } = useLiveLocation();
+
+  // --- DYNAMIC DISTANCE CALCULATION (Handles BOTH Check-in & Check-out) ---
+  let distance: number | null = null;
+  let isWithinGeofence = false;
+
+  // If they have an active shift, check against their checked-in location.
+  // Otherwise, check against their selected location.
+  const targetLocation = shift
+    ? (shift.workLocation as WorkLocation)
+    : selectedLocation;
+
+  if (targetLocation && userCoords) {
+    const site = SITE_COORDINATES[targetLocation];
+    if (site) {
+      distance = Math.round(
+        getDistanceInMeters(userCoords.lat, userCoords.lng, site.lat, site.lng),
+      );
+      isWithinGeofence = distance <= MAX_ALLOWED_DISTANCE_METERS;
+    }
+  }
+
+  // --- DISTANCE FORMATTER ---
+  const formatDistance = (meters: number) => {
+    if (meters < 1000) return `${meters} m`;
+    const km = Math.floor(meters / 1000);
+    const remainingMeters = meters % 1000;
+    return remainingMeters === 0 ? `${km} km` : `${km} km`;
+  };
+
+  // --- HANDLERS ---
   const handleTriggerCheckIn = () => {
-    if (selectedLocation) {
+    if (selectedLocation && isWithinGeofence) {
       setModalConfig({ isOpen: true, type: "check-in" });
     }
   };
 
   const handleTriggerCheckOut = () => {
-    setModalConfig({ isOpen: true, type: "check-out" });
+    // Ensure they are in range before opening the modal
+    if (shift && isWithinGeofence) {
+      setModalConfig({ isOpen: true, type: "check-out" });
+    }
   };
 
   const handleConfirmAction = () => {
     if (modalConfig.type === "check-in" && selectedLocation) {
-      onCheckIn(selectedLocation);
+      onCheckIn(selectedLocation, userCoords!.lat, userCoords!.lng);
     } else if (modalConfig.type === "check-out") {
-      onCheckOut();
+      onCheckOut(userCoords!.lat, userCoords!.lng);
     }
     setModalConfig((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  // --- HELPER: REUSABLE GEOFENCE MESSAGING ---
+  const renderGeofenceMessage = () => {
+    const actionText = shift ? "check out" : "check in";
+
+    // Get the coordinates of the target site
+    const siteCoords = targetLocation ? SITE_COORDINATES[targetLocation] : null;
+
+    return (
+      <div className="mt-4 space-y-8">
+        {/* --- SHOW MAP IF WE HAVE BOTH COORDS --- */}
+        {userCoords && siteCoords && (
+          <div className="animate-in fade-in zoom-in-95 duration-500">
+            <LiveMap
+              userLat={userCoords.lat}
+              userLng={userCoords.lng}
+              siteLat={siteCoords.lat}
+              siteLng={siteCoords.lng}
+              radius={MAX_ALLOWED_DISTANCE_METERS}
+            />
+          </div>
+        )}
+
+        {/* Your existing text messages below the map */}
+        {locationError && (
+          <p className="text-xs text-red-400 px-1 text-center font-medium">
+            {locationError}
+          </p>
+        )}
+        {isLocating && !userCoords && (
+          <p className="text-xs text-zinc-400 px-1 text-center flex items-center justify-center gap-2">
+            <Loader2 className="w-3 h-3 animate-spin" /> Acquiring GPS signal...
+          </p>
+        )}
+        {distance !== null && !isWithinGeofence && (
+          <p className="text-xs text-yellow-500 px-1 text-center font-medium bg-yellow-950/30 p-2 rounded-lg border border-yellow-900/50">
+            You are {formatDistance(distance)} away. Please move within{" "}
+            {MAX_ALLOWED_DISTANCE_METERS}m to {actionText}.
+          </p>
+        )}
+        {distance !== null && isWithinGeofence && (
+          <p className="text-xs text-green-400 px-1 text-center font-medium">
+            Location verified ({formatDistance(distance)} away). Ready to{" "}
+            {actionText}?
+          </p>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -104,15 +206,19 @@ export default function AttendanceStatusCard({
               </div>
             ) : shift ? (
               // STATE 3: ACTIVE SHIFT
-              <div className="flex items-center gap-3 text-sm text-green-400 bg-green-900/20 p-3.5 rounded-2xl border border-green-900/50">
-                <Briefcase size={18} className="shrink-0" />
-                <span className="leading-relaxed">
-                  Have a great shift! You are currently checked in at{" "}
-                  <strong className="text-green-300">
-                    {shift.workLocation}
-                  </strong>
-                  .
-                </span>
+              <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex items-center gap-3 text-sm text-green-400 bg-green-900/20 p-3.5 rounded-2xl border border-green-900/50">
+                  <Briefcase size={18} className="shrink-0" />
+                  <span className="leading-relaxed">
+                    Have a great shift! You are currently checked in at{" "}
+                    <strong className="text-green-300">
+                      {shift.workLocation}
+                    </strong>
+                    .
+                  </span>
+                </div>
+                {/* Geofence message for Check Out */}
+                {renderGeofenceMessage()}
               </div>
             ) : selectedLocation ? (
               // STATE 2: SELECTION MADE
@@ -136,9 +242,8 @@ export default function AttendanceStatusCard({
                     <RotateCcw size={12} /> Change
                   </button>
                 </div>
-                <p className="text-xs text-zinc-400 px-1 text-center">
-                  Location secured. Ready to start your day?
-                </p>
+                {/* Geofence message for Check In */}
+                {renderGeofenceMessage()}
               </div>
             ) : (
               // STATE 1: NO SELECTION
@@ -159,9 +264,14 @@ export default function AttendanceStatusCard({
             // BUTTON: END SHIFT
             <Button
               variant="destructive"
-              className="w-full h-12 text-base font-semibold shadow-lg rounded-2xl"
+              className="w-full h-12 text-base font-semibold shadow-lg rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleTriggerCheckOut}
-              disabled={isProcessing}
+              disabled={
+                isProcessing ||
+                isLocating ||
+                !!locationError ||
+                !isWithinGeofence // <-- Locks Check Out if out of range
+              }
             >
               {isProcessing ? (
                 <>
@@ -177,9 +287,14 @@ export default function AttendanceStatusCard({
           ) : selectedLocation ? (
             // BUTTON: CONFIRM SELECTION
             <Button
-              className="w-full h-12 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-semibold shadow-lg shadow-green-900/20"
+              className="w-full h-12 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-semibold shadow-lg shadow-green-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleTriggerCheckIn}
-              disabled={isProcessing}
+              disabled={
+                isProcessing ||
+                isLocating ||
+                !!locationError ||
+                !isWithinGeofence // <-- Locks Check In if out of range
+              }
             >
               {isProcessing ? (
                 <>

@@ -32,16 +32,9 @@ import {
   MapPin,
   Download,
   Loader2,
-  FileText,
-  RefreshCcw,
   MoreVertical,
-  Edit,
   CalendarClock,
-  ClipboardList,
-  UserCheck,
-  Menu,
   ClockFading,
-  User,
 } from "lucide-react";
 import {
   Select,
@@ -50,10 +43,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { generateAttendancePDF, getShift } from "@/lib/utils";
 import { updateAttendanceTime } from "@/lib/attendance.actions";
-import Link from "next/link";
+import { WORK_LOCATIONS, WorkLocation } from "@/constants/location";
 
 // --- TYPES ---
 type EditState = {
@@ -77,12 +70,15 @@ export default function AttendanceTable({
   total: number;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
 
   // -- States --
   const [exportMonth, setExportMonth] = useState(new Date().getMonth() + 1);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
   const [isExporting, setIsExporting] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<WorkLocation | null>(
+    null,
+  );
 
   // -- Edit Modal State --
   const [editState, setEditState] = useState<EditState>({
@@ -95,14 +91,16 @@ export default function AttendanceTable({
 
   // -- Handlers --
   const handleRefresh = () => {
-    setIsRefreshing(true);
     router.refresh();
-    setTimeout(() => setIsRefreshing(false), 1000);
   };
 
   const handleExport = async () => {
     setIsExporting(true);
-    await generateAttendancePDF(exportMonth, exportYear);
+    await generateAttendancePDF(
+      exportMonth,
+      exportYear,
+      selectedLocation ?? "Nagaur",
+    );
     setIsExporting(false);
   };
 
@@ -122,6 +120,14 @@ export default function AttendanceTable({
 
   const totalPages = Math.ceil(total / limit);
 
+  // Generate Date dropdown options
+  const months = Array.from({ length: 12 }, (_, i) => ({
+    value: (i + 1).toString(),
+    label: new Date(0, i).toLocaleString("default", { month: "long" }),
+  }));
+  const currentYear = new Date().getFullYear();
+  const years = [currentYear - 1, currentYear, currentYear + 1].map(String);
+
   return (
     <div className="mx-6 md:mx-14 text-white my-8">
       {/* 1. EDIT DIALOG (Popup) */}
@@ -131,22 +137,120 @@ export default function AttendanceTable({
         onSuccess={handleRefresh} // Refresh table after save
       />
 
-      {/* 2 & 3. Unified Control Navbar */}
-      <ControlNavbar
-        month={exportMonth}
-        year={exportYear}
-        setMonth={setExportMonth}
-        setYear={setExportYear}
-        onExport={handleExport}
-        isExporting={isExporting}
-        onViewRegister={() => router.push("/register")}
-        onRefresh={handleRefresh}
-        isRefreshing={isRefreshing}
-      />
+      {/* 2. HEADER & EXPORT BUTTON */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <h1 className="text-2xl font-medium">Daily Attendance Record</h1>
 
-      <h1 className="text-2xl mb-5 font-medium">Daily Attendance Record</h1>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button
+              variant="secondary"
+              className="rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
+              title="Export Report"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Monthly Report
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-neutral-900 border-neutral-800 text-white sm:max-w-[400px] rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>Export Monthly Report</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-6 py-4">
+              <div className="flex flex-col gap-3">
+                <Label className="text-neutral-400">Select Month</Label>
+                <Select
+                  value={exportMonth.toString()}
+                  onValueChange={(v) => setExportMonth(Number(v))}
+                >
+                  <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
+                    <SelectValue placeholder="Month" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
+                    {months.map((m) => (
+                      <SelectItem
+                        key={m.value}
+                        value={m.value}
+                        className="focus:bg-neutral-800 focus:text-white cursor-pointer"
+                      >
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-      {/* 4. Data Table */}
+              <div className="flex flex-col gap-3">
+                <Label className="text-neutral-400">Select Location</Label>
+                <Select
+                  value={selectedLocation || ""} // fallback to empty string if null
+                  onValueChange={(v) => setSelectedLocation(v as WorkLocation)} // Correctly update location state
+                >
+                  <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
+                    <SelectValue placeholder="Select Location" />{" "}
+                    {/* Fixed placeholder */}
+                  </SelectTrigger>
+                  <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
+                    {/* Optional: If your PDF generator supports exporting ALL locations at once, uncomment this line: */}
+                    {/* <SelectItem value="All" className="focus:bg-neutral-800 focus:text-white cursor-pointer">All Locations</SelectItem> */}
+
+                    {/* Correctly map over the string array */}
+                    {WORK_LOCATIONS.map((loc) => (
+                      <SelectItem
+                        key={loc}
+                        value={loc}
+                        className="focus:bg-neutral-800 focus:text-white cursor-pointer"
+                      >
+                        {/* Capitalize the first letter for the UI */}
+                        {loc.charAt(0).toUpperCase() + loc.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <Label className="text-neutral-400">Select Year</Label>
+                <Select
+                  value={exportYear.toString()}
+                  onValueChange={(v) => setExportYear(Number(v))}
+                >
+                  <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
+                    <SelectValue placeholder="Year" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
+                    {years.map((y) => (
+                      <SelectItem
+                        key={y}
+                        value={y}
+                        className="focus:bg-neutral-800 focus:text-white cursor-pointer"
+                      >
+                        {y}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={handleExport}
+                disabled={isExporting}
+                className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+              >
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 mr-2" />
+                )}
+                {isExporting ? "Generating PDF..." : "Download PDF"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* 3. DATA TABLE */}
       <div className="overflow-x-auto rounded-md border border-neutral-800">
         <Table className="bg-black">
           <TableHeader className="bg-neutral-900 text-white">
@@ -158,7 +262,7 @@ export default function AttendanceTable({
                 "IN TIME",
                 "OUT",
                 "OUT TIME",
-                "HOURS", // <--- ADDED HOURS HEADER HERE
+                "HOURS",
                 "SHIFT",
                 "LOCATION",
                 "",
@@ -187,12 +291,12 @@ export default function AttendanceTable({
         </Table>
       </div>
 
-      {/* 5. Pagination */}
+      {/* 4. Pagination */}
       <PaginationControls
         page={page}
         totalPages={totalPages}
         onPageChange={(p: number) =>
-          router.push(p === 1 ? "/attendance" : `/attendance?page=${p}`)
+          router.push(p === 1 ? pathname : `${pathname}?page=${p}`)
         }
       />
     </div>
@@ -305,12 +409,10 @@ const AttendanceRow = ({ item, openMap, onEdit }: any) => {
   const cinTime = formatTime(item.checkInAt);
   const coutTime = formatTime(item.checkOutAt);
 
-  // --- ADDED HOURS CALCULATION HELPER ---
   const calculateHours = (checkIn: string, checkOut: string) => {
     if (!checkIn)
       return <Pill text="Pending" color="bg-yellow-900/40 text-yellow-300" />;
 
-    // If there is a check-in but no check-out, they are currently working
     if (checkIn && !checkOut)
       return <Pill text="Working" color="bg-blue-900/40 text-blue-300" />;
 
@@ -366,10 +468,7 @@ const AttendanceRow = ({ item, openMap, onEdit }: any) => {
           <Pill text="Pending" color="bg-yellow-900/40 text-yellow-300" />
         )}
       </TableCell>
-
-      {/* --- ADDED HOURS CELL --- */}
       <TableCell>{calculateHours(item.checkInAt, item.checkOutAt)}</TableCell>
-
       <TableCell>
         {shift === "Pending" ? (
           <Pill text="Pending" color="bg-yellow-900/40 text-yellow-300" />
@@ -380,8 +479,6 @@ const AttendanceRow = ({ item, openMap, onEdit }: any) => {
         )}
       </TableCell>
       <TableCell>{item.workLocation}</TableCell>
-
-      {/* ACTIONS COLUMN */}
       <TableCell className="w-[50px] p-0 text-center">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -398,14 +495,12 @@ const AttendanceRow = ({ item, openMap, onEdit }: any) => {
             className="bg-neutral-900 border-neutral-800 text-neutral-200"
           >
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-
             <DropdownMenuItem
               onClick={() => onEdit(item, "checkIn")}
               className="hover:bg-neutral-800 hover:text-white cursor-pointer"
             >
               <CalendarClock className="mr-2 h-4 w-4" /> Edit Check In
             </DropdownMenuItem>
-
             <DropdownMenuItem
               onClick={() => onEdit(item, "checkOut")}
               className="hover:bg-neutral-800 hover:text-white cursor-pointer"
@@ -451,234 +546,26 @@ const LocationPill = ({ date, lat, lng, openMap }: any) => {
   );
 };
 
-const ControlNavbar = ({
-  month,
-  year,
-  setMonth,
-  setYear,
-  onExport,
-  isExporting,
-  onViewRegister,
-  onRefresh,
-  isRefreshing,
-}: any) => {
-  const months = Array.from({ length: 12 }, (_, i) => ({
-    value: (i + 1).toString(),
-    label: new Date(0, i).toLocaleString("default", { month: "long" }),
-  }));
-
-  const currentYear = new Date().getFullYear();
-  const years = [currentYear - 1, currentYear, currentYear + 1].map(String);
-
+const PaginationControls = ({ page, totalPages, onPageChange }: any) => {
   return (
-    <div className="flex justify-between items-center bg-neutral-900 border border-neutral-800 p-2 rounded-full shadow-lg mb-8 w-full">
-      {/* LEFT SIDE: Actions */}
-      <div className="flex items-center gap-2">
-        {/* DESKTOP: Icon-only actions */}
-        <div className="hidden sm:flex items-center gap-2 pl-2">
-          <Button
-            onClick={onViewRegister}
-            variant="ghost"
-            size="icon"
-            className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
-            title="View Register"
-          >
-            <ClipboardList className="w-5 h-5" />
-          </Button>
-
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
-            title="Mark Attendance"
-          >
-            <Link href="/mark-attendance">
-              <UserCheck className="w-5 h-5" />
-            </Link>
-          </Button>
-
-          <Button
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            variant="ghost"
-            size="icon"
-            className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
-            title="Reload Data"
-          >
-            <RefreshCcw
-              className={`w-5 h-5 ${isRefreshing ? "animate-spin" : ""}`}
-            />
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            className="rounded-full text-neutral-300 hover:bg-neutral-800 hover:text-white"
-            title="View Users"
-          >
-            <Link href="/users">
-              <User className="w-5 h-5" />
-            </Link>
-          </Button>
-        </div>
-
-        {/* MOBILE: Hamburger Menu */}
-        <div className="sm:hidden pl-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full text-neutral-300 hover:bg-neutral-800"
-              >
-                <Menu className="w-5 h-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="bg-neutral-900 border-neutral-800 text-white rounded-xl"
-            >
-              <DropdownMenuItem
-                onClick={onViewRegister}
-                className="cursor-pointer hover:bg-neutral-800"
-              >
-                <ClipboardList className="w-4 h-4 mr-2" /> View Register
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                asChild
-                className="cursor-pointer hover:bg-neutral-800"
-              >
-                <Link href="/mark-attendance">
-                  <UserCheck className="w-4 h-4 mr-2" /> Mark Attendance
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={onRefresh}
-                disabled={isRefreshing}
-                className="cursor-pointer hover:bg-neutral-800"
-              >
-                <RefreshCcw
-                  className={`w-4 h-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`}
-                />{" "}
-                Reload Data
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                asChild
-                className="cursor-pointer hover:bg-neutral-800"
-              >
-                <Link href="/users">
-                  <User className="w-4 h-4 mr-2" /> View Users
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-
-      {/* RIGHT SIDE: Export Popup (Dialog) */}
-      <div className="pr-1">
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button
-              variant="secondary"
-              className="rounded-full bg-blue-600 hover:bg-blue-700 text-white"
-              title="Export Report"
-            >
-              <Download className="w-5 h-5" />
-              Monthly Report
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-neutral-900 border-neutral-800 text-white sm:max-w-[400px] rounded-2xl">
-            <DialogHeader>
-              <DialogTitle>Export Monthly Report</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-6 py-4">
-              <div className="flex flex-col gap-3">
-                <Label className="text-neutral-400">Select Month</Label>
-                <Select
-                  value={month.toString()}
-                  onValueChange={(v) => setMonth(Number(v))}
-                >
-                  <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
-                    <SelectValue placeholder="Month" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
-                    {months.map((m) => (
-                      <SelectItem
-                        key={m.value}
-                        value={m.value}
-                        className="focus:bg-neutral-800 focus:text-white cursor-pointer"
-                      >
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <Label className="text-neutral-400">Select Year</Label>
-                <Select
-                  value={year.toString()}
-                  onValueChange={(v) => setYear(Number(v))}
-                >
-                  <SelectTrigger className="w-full bg-black border-neutral-700 text-white rounded-xl focus:ring-0">
-                    <SelectValue placeholder="Year" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-neutral-900 border-neutral-800 text-white rounded-xl">
-                    {years.map((y) => (
-                      <SelectItem
-                        key={y}
-                        value={y}
-                        className="focus:bg-neutral-800 focus:text-white cursor-pointer"
-                      >
-                        {y}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                onClick={onExport}
-                disabled={isExporting}
-                className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold"
-              >
-                {isExporting ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4 mr-2" />
-                )}
-                {isExporting ? "Generating PDF..." : "Download PDF"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+    <div className="flex justify-center gap-4 mt-6 items-center">
+      <button
+        disabled={page <= 1}
+        onClick={() => onPageChange(page - 1)}
+        className="px-4 py-2 rounded bg-neutral-800 disabled:opacity-40"
+      >
+        Previous
+      </button>
+      <span className="text-sm text-neutral-300">
+        Page {page} of {totalPages}
+      </span>
+      <button
+        disabled={page >= totalPages}
+        onClick={() => onPageChange(page + 1)}
+        className="px-4 py-2 rounded bg-neutral-800 disabled:opacity-40"
+      >
+        Next
+      </button>
     </div>
   );
 };
-
-const PaginationControls = ({ page, totalPages, onPageChange }: any) => (
-  <div className="flex justify-center gap-4 mt-6 items-center">
-    <button
-      disabled={page <= 1}
-      onClick={() => onPageChange(page - 1)}
-      className="px-4 py-2 rounded bg-neutral-800 disabled:opacity-40"
-    >
-      Previous
-    </button>
-    <span className="text-sm text-neutral-300">
-      Page {page} of {totalPages}
-    </span>
-    <button
-      disabled={page >= totalPages}
-      onClick={() => onPageChange(page + 1)}
-      className="px-4 py-2 rounded bg-neutral-800 disabled:opacity-40"
-    >
-      Next
-    </button>
-  </div>
-);

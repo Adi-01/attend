@@ -8,8 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Users, CalendarDays, ClipboardList, UserCheck } from "lucide-react";
-import Link from "next/link"; // <-- Import Link
+import { Users } from "lucide-react";
 import UserActions from "@/components/UserActions";
 import AddUserModal from "@/components/AddUserModal";
 
@@ -18,58 +17,6 @@ export default async function UsersPage() {
 
   return (
     <div className="mx-6 md:mx-14 text-white my-8">
-      {/* FLOATING SQUIRCLE NAVBAR */}
-      <nav className="flex justify-center mb-10">
-        <div className="flex items-center p-1.5 bg-neutral-900 border border-neutral-800 rounded-full shadow-lg">
-          <Link
-            href="/attendance"
-            className="flex items-center gap-2 px-4 py-2.5 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-full transition-all group"
-            title="Daily Attendance"
-          >
-            <CalendarDays className="w-4 h-4 group-hover:scale-110 transition-transform" />
-            <span className="text-sm font-medium hidden md:block">
-              Attendance
-            </span>
-          </Link>
-
-          <Link
-            href="/register"
-            className="flex items-center gap-2 px-4 py-2.5 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-full transition-all group"
-            title="Monthly Register"
-          >
-            <ClipboardList className="w-4 h-4 group-hover:scale-110 transition-transform" />
-            <span className="text-sm font-medium hidden md:block">
-              Register
-            </span>
-          </Link>
-
-          <Link
-            href="/mark-attendance"
-            className="flex items-center gap-2 px-4 py-2.5 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded-full transition-all group"
-            title="Mark Attendance"
-          >
-            <UserCheck className="w-4 h-4 group-hover:scale-110 transition-transform" />
-            <span className="text-sm font-medium hidden md:block">
-              Mark In/Out
-            </span>
-          </Link>
-
-          {/* Vertical Divider */}
-          <div className="w-px h-6 bg-neutral-800 mx-1"></div>
-
-          {/* Active State for Current Page */}
-          <Link
-            href="/users"
-            className="flex items-center gap-2 px-4 py-2.5 text-white bg-neutral-800 rounded-full transition-all shadow-sm border border-neutral-700 cursor-default"
-          >
-            <Users className="w-4 h-4" />
-            <span className="text-sm font-medium hidden md:block">
-              Users Directory
-            </span>
-          </Link>
-        </div>
-      </nav>
-
       {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h1 className="text-2xl font-medium">User Directory</h1>
