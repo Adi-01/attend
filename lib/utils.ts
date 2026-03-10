@@ -45,6 +45,9 @@ export const generateAttendancePDF = async (
     return false;
   }
 
+  // --- NEW: Swap "Nagaur" for "JSW" ---
+  const displayLocation = location === "Nagaur" ? "JSW Bhandha" : location;
+
   const doc = new jsPDF({ orientation: "landscape" });
 
   // Background
@@ -61,7 +64,11 @@ export const generateAttendancePDF = async (
   doc.setFontSize(14);
   doc.setTextColor(255, 255, 255);
   doc.text(
-    `Attendance Report - ${new Date(0, month - 1).toLocaleString("default", {
+    // --- UPDATED: Added the displayLocation to the Title ---
+    `Attendance Report (${displayLocation}) - ${new Date(
+      0,
+      month - 1,
+    ).toLocaleString("default", {
       month: "long",
     })} ${year}`,
     14,
@@ -87,7 +94,10 @@ export const generateAttendancePDF = async (
       createLocationCell(item.checkOutAt, item.latitudeOut, item.longitudeOut),
       formatTime(item.checkOutAt) || "Pending",
       shift,
-      item.workLocation || "N/A",
+      // Optional: If you also want "JSW Bhandha" inside the table's location column itself:
+      item.workLocation === "Nagaur"
+        ? "JSW Bhandha"
+        : item.workLocation || "N/A",
     ];
   });
 
@@ -152,6 +162,7 @@ export const generateAttendancePDF = async (
     },
   });
 
-  doc.save(`Attendance_${month}_${year}.pdf`);
+  // --- UPDATED: Added the displayLocation to the Filename ---
+  doc.save(`Attendance_${displayLocation}_${month}_${year}.pdf`);
   return true;
 };

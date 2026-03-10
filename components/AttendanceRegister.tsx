@@ -136,8 +136,14 @@ export default function AttendanceRegister({
   }, [filteredData]);
 
   // --- PDF GENERATION ---
+  // --- PDF GENERATION ---
   const generatePDF = () => {
     setIsExporting(true);
+
+    // Create a display name for the location (Swap "Nagaur" for "JSW Bhandha")
+    const displayLocation =
+      locationFilter === "Nagaur" ? "JSW Bhandha" : locationFilter;
+
     const doc = new jsPDF({ orientation: "landscape" });
 
     doc.setFillColor(23, 23, 23);
@@ -151,7 +157,8 @@ export default function AttendanceRegister({
 
     doc.setTextColor(255, 255, 255);
     doc.text(
-      `Attendance Register (${locationFilter}) - ${new Date(
+      // Use displayLocation here instead of locationFilter
+      `Attendance Register (${displayLocation}) - ${new Date(
         year,
         month - 1,
       ).toLocaleString("default", { month: "long" })} ${year}`,
@@ -248,7 +255,8 @@ export default function AttendanceRegister({
       },
     });
 
-    doc.save(`Attendance_${locationFilter}_${month}_${year}.pdf`);
+    // Use displayLocation here for the file name as well
+    doc.save(`Attendance_${displayLocation}_${month}_${year}.pdf`);
     setIsExporting(false);
   };
 
