@@ -9,6 +9,7 @@ import {
   Check,
   CheckCheck,
   Loader2,
+  RefreshCcw,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -39,6 +40,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { getMonthlyAttendanceData } from "@/lib/attendance.actions";
 import { Separator } from "./ui/separator";
+import { useRouter } from "next/navigation";
 
 // Updated Types matching Backend
 type DayStatus = {
@@ -71,6 +73,8 @@ export default function AttendanceRegister({
   const [isLoading, setIsLoading] = useState(false);
   const [locationFilter, setLocationFilter] = useState<string>("All");
   const [isExporting, setIsExporting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const router = useRouter();
 
   const daysInMonth = new Date(year, month, 0).getDate();
 
@@ -257,6 +261,13 @@ export default function AttendanceRegister({
     setIsLoading(false);
   };
 
+  const handleHardRefresh = () => {
+    setIsRefreshing(true);
+    router.refresh();
+    // Stop spinning after 1 second (since router.refresh() doesn't return a promise)
+    setTimeout(() => setIsRefreshing(false), 1000);
+  };
+
   const currentYearOptions = new Date().getFullYear();
   const years = [
     currentYearOptions - 1,
@@ -313,6 +324,19 @@ export default function AttendanceRegister({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            {/* NEW: Refresh Button */}
+            <Button
+              onClick={handleHardRefresh}
+              disabled={isRefreshing}
+              variant="outline"
+              className="rounded-full bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800 hover:text-white"
+              title="Refresh Data"
+            >
+              <RefreshCcw
+                className={`w-4 h-4 sm:mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+              />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
             {/* Filter Dialog */}
             <Dialog>
               <DialogTrigger asChild>
