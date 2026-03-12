@@ -1,6 +1,6 @@
 import AttendanceRegister from "@/components/AttendanceRegister";
 import { getMonthlyAttendanceData } from "@/lib/attendance.actions";
-
+export const dynamic = "force-dynamic";
 export default async function AttendanceRegisterPage() {
   const now = new Date();
   const month = now.getMonth() + 1;

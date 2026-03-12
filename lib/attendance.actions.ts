@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/appwrite";
 import { appwriteConfig } from "@/lib/appwrite/config";
 import { revalidatePath } from "next/cache";
 import { Query } from "node-appwrite";
+import { unstable_noStore as noStore } from "next/cache";
 
 export async function getAttendanceData(page = 1, limit = 10) {
   try {
@@ -38,14 +39,15 @@ export async function getAttendanceData(page = 1, limit = 10) {
 }
 
 export async function getMonthlyAttendanceData(month: number, year: number) {
+  noStore();
   try {
     const { tables } = await createAdminClient();
 
     const lastDay = new Date(year, month, 0).getDate();
-    const startDate = new Date(Date.UTC(year, month - 1, 1)).toISOString();
-    const endDate = new Date(
-      Date.UTC(year, month, 0, 23, 59, 59, 999),
-    ).toISOString();
+
+    const startDate = `${year}-${String(month).padStart(2, "0")}-01T00:00:00+05:30`;
+
+    const endDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}T23:59:59.999+05:30`;
 
     const res = await tables.listRows({
       databaseId: appwriteConfig.databaseId,
@@ -130,7 +132,7 @@ export async function getMonthlyAttendanceData(month: number, year: number) {
         }
       }
     });
-    console.log(Object.values(userMap));
+    // console.log(Object.values(userMap));
     return {
       success: true,
       attendanceData: Object.values(userMap),
