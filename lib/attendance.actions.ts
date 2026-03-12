@@ -42,11 +42,10 @@ export async function getMonthlyAttendanceData(month: number, year: number) {
     const { tables } = await createAdminClient();
 
     const lastDay = new Date(year, month, 0).getDate();
-    const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
-    const endDate = `${year}-${String(month).padStart(
-      2,
-      "0",
-    )}-${lastDay}T23:59:59.999`;
+    const startDate = new Date(Date.UTC(year, month - 1, 1)).toISOString();
+    const endDate = new Date(
+      Date.UTC(year, month, 0, 23, 59, 59, 999),
+    ).toISOString();
 
     const res = await tables.listRows({
       databaseId: appwriteConfig.databaseId,
@@ -131,7 +130,7 @@ export async function getMonthlyAttendanceData(month: number, year: number) {
         }
       }
     });
-    // console.log(Object.values(userMap));
+    console.log(Object.values(userMap));
     return {
       success: true,
       attendanceData: Object.values(userMap),
